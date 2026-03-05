@@ -63,6 +63,8 @@ def isfree(nx, ny, f_width, f_pitch, f_depth, mesh_length):
         T5_isfree[nx - mn_d:nx, mn_nf + i * mn_p:(i + 1) * mn_p] = 0
         T13_isfree[nx - mn_d:nx + 1, mn_nf + i * mn_p:(i + 1) * mn_p - 1] = 0
     return T13_isfree, T5_isfree
+
+
 def monitor_memory():
     free_mem, total_mem = cp.cuda.runtime.memGetInfo()
     used_mem = total_mem - free_mem

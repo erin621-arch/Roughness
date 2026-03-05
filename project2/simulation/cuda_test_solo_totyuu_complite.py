@@ -138,6 +138,8 @@ mn_p = int(f_pitch / mesh_length)
 mn_nf = int((f_pitch - f_width) / mesh_length)
 # 傷の深さ方向の離散点数
 mn_d = int(f_depth / mesh_length)
+
+
 #  =========================================================================================
 #  =======FDTD本体=======
 # 　T1,T3は垂直応力 T5はせん断応力　Ux,Uyは固体粒子速度

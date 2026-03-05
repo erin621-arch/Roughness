@@ -130,6 +130,7 @@ mn_p = int(f_pitch / mesh_length)
 mn_nf = int((f_pitch - f_width) / mesh_length)
 # 傷の深さ方向の離散点数
 mn_d = int(f_depth / mesh_length)
+
 #  =========================================================================================
 #  =======FDTD本体=======
 # 　T1,T3は垂直応力 T5はせん断応力　Ux,Uyは固体粒子速度
@@ -200,10 +201,12 @@ for t in range(int(t_max)):
     T1[0, 0] = 0
     T3[0, 0] = 0
     T5[0, 0] = 0
+    
     #  横粒子速度の境界条件
     Uy[1:nx, 0] = Uy[1:nx, 0] - (4 / rho) * dtx * (T3[1:nx, 0])
     Uy[1:nx, ny] = Uy[1:nx, ny] - (4 / rho) * dtx * (-1 * T3[1:nx, ny - 1])
     Uy[nx, 1:ny] = Uy[nx, 1:ny] - (4 / rho) * dtx * (-1 * T5[nx - 1, 1:ny])
+    
     #  きず部分の応力境界条件
     for i in range(num_f):
         if (i + 1) * mn_p >= ny:
