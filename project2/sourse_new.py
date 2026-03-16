@@ -325,9 +325,6 @@ def select_pitch_and_image_exp(pitch, depth_list):
     plt.show()
 
 
-
-
-
 def select_sim(pitch, depth_list):
     sim_data_ref = np.loadtxt(r"C:\Users\manat\project2\data_all\cupy_pitch125_depth0.csv")
     yf_ref, freq_ref = make_fftdata(kiritori2(interpolate_sim_one(sim_data_ref)[8000:], left, right), exp_dt)

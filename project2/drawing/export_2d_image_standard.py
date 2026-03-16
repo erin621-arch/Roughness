@@ -5,7 +5,6 @@ import matplotlib.gridspec as gridspec
 
 plt.rcParams["font.size"] = 20
 
-
 def visualize_fdtd_with_boundaries(
     file_path_t1,
     file_path_t3,
