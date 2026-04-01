@@ -7,7 +7,7 @@ import japanize_matplotlib # 追加
 f_pitch = 1.25e-3    # ピッチ [m]（z方向の周期）
 f_depth = 0.20e-3    # 深さ [m]（x方向）
 mesh_length = 1.0e-5 # メッシュサイズ [m]
-step_size = 10       # 階段サイズ
+step_size = 1       # 階段サイズ
 
 # 解析領域サイズ（x-z）
 x_length = 0.02
