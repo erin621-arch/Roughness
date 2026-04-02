@@ -64,7 +64,6 @@ def isfree_kusabi(nx, nz, f_pitch, f_depth, mesh_length, step_size):
     return T13_isfree, T5_isfree, cut_top_map
 
 
-
 def around_free_all(nx, nz, T13_isfree, T5_isfree):
     """
     近傍がfreeでない点（<4）を “Active” とみなすためのカウント

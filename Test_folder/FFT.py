@@ -214,7 +214,7 @@ def get_sim_folder_path(base_root, shape):
 if __name__ == "__main__":
 
     # --- ディレクトリ設定 (お使いの環境に合わせて固定) ---
-    # doc_path = r"C:\Users\cs16\Documents\Test_folder"
+    # doc_path = r"C:/Users/cs16/Roughness/Test_folder"  # 研究室PC
     doc_path = r"C:/Users/hisay/OneDrive/ドキュメント/Test_folder"   # 自宅PC
     
     exp_base_dir = os.path.join(doc_path, "Experiment_Data")

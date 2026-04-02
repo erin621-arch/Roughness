@@ -98,7 +98,10 @@ def get_sim_filepath(base_root, shape, pitch, depth_val):
 if __name__ == "__main__":
 
     # --- ディレクトリ設定 ---
-    doc_path = r"C:/Users/hisay/OneDrive/ドキュメント/Test_folder"
+    # doc_path = r"C:/Users/hisay/OneDrive/ドキュメント/Test_folder"
+    # doc_path = "/Users/hisayoshi/project_python/Roughness/Test_folder"
+    doc_path = r"C:/Users/cs16/Roughness/Test_folder"
+    
     sim_base_dir = os.path.join(doc_path, "Simulation_Data")
 
     # --- 解析条件 ---

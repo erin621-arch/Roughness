@@ -13,7 +13,7 @@ import traceback
 # ================== 調整パラメータ ==================
 
 # 出力先
-# output_dir = r"C:/Users/cs16/Documents/Test_folder/tmp_output"  # 研究室PC
+# output_dir = r"C:/Users/cs16/Roughness/Test_folder/tmp_output"  # 研究室PC
 output_dir = r"C:/Users/hisay/OneDrive/ドキュメント/test_folder/tmp_output"   # 自宅PC
 
 
