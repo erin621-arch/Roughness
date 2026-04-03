@@ -13,23 +13,23 @@ from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
 # ================== 調整パラメータ ==================
 
 # 出力先
-# output_dir = r"C:/Users/cs16/Roughness/Test_folder/tmp_output"  # 研究室PC
-output_dir = r"C:/Users/hisay/OneDrive/ドキュメント/test_folder/tmp_output"   # 自宅PC
+output_dir = r"C:/Users/cs16/Roughness/Test_folder/tmp_output"  # 研究室PC
+# output_dir = r"C:/Users/hisay/OneDrive/ドキュメント/test_folder/tmp_output"   # 自宅PC
 
 # ★くさび形 のパラメータ
 f_pitch = 1.25e-3   # ピッチ p [m]
 f_depth = 0.20e-3   # 深さ d [m]
 
 # ★階段の高さ（メッシュ数）
-step_size = 5
+step_size = 1
 
 # ★アニメーション保存用
-save_interval = 10        # 何ステップごとに保存するか（くさびは時間が長いため大きめに設定）
-global_downsample = 6     # 全体図の間引き率（メモリ不足防止のため6推奨）
+save_interval = 10        # 何ステップごとに1フレーム保存するか
+global_downsample = 6     # 全体図の間引き率
 
-# ★拡大表示の設定 (5.0mm x 1.0mm)
+# ★拡大表示の設定 
 zoom_width_mm = 3.0
-zoom_height_mm = 0.25
+zoom_height_mm = 0.5
 
 # ===================================================
 
@@ -55,8 +55,8 @@ x_length = 0.02   # [m]
 y_length = 0.04   # [m]
 mesh_length = 1.0e-5  # メッシュサイズ [m]
 
-nx = int(round(x_length / mesh_length))
-ny = int(round(y_length / mesh_length))
+nx = int(x_length / mesh_length)
+ny = int(y_length / mesh_length)
 
 dx = x_length / nx
 dy = y_length / ny
@@ -127,7 +127,7 @@ def isfree_kusabi(nx, ny, f_pitch, f_depth, mesh_length, step_size):
                 continue
 
             cut_top = max(0, nx - current_depth)
-            T13_isfree[cut_top: nx, y] = 0
+            T13_isfree[cut_top: nx + 1, y] = 0
             T5_isfree[cut_top: nx, y] = 0
             T5_isfree[cut_top: nx, y+1] = 0
 
@@ -146,6 +146,7 @@ def around_free(T13_isfree, T5_isfree):
             if T5_isfree[i, j] == 0: Ux_free_count[i, j] += 1
             if T5_isfree[i, j + 1] == 0: Ux_free_count[i, j] += 1
 
+    '''
     for i in range(nx + 1):
         for j in range(ny + 1):
             if j == 0 or j == ny or i == 0 or i == nx:
@@ -155,6 +156,29 @@ def around_free(T13_isfree, T5_isfree):
                 if T13_isfree[i, j] == 0:     Uy_free_count[i, j] += 1
                 if T5_isfree[i - 1, j] == 0:  Uy_free_count[i, j] += 1
                 if T5_isfree[i, j] == 0:      Uy_free_count[i, j] += 1
+    '''
+    
+    # Uz 周囲カウント
+    for i in range(nx + 1):
+        for j in range(ny + 1):
+            # 変更点1: i == nx をこの除外条件から消す
+            if j == 0 or j == ny or i == 0:
+                Uy_free_count[i, j] += 1  # 元のロジックに従い加算（完全に消すなら +=4 推奨）
+
+            # 変更点2: i <= nx (底面を含む) まで範囲を広げる
+            elif 0 < i <= nx and 0 < j < ny:
+                if T13_isfree[i, j - 1] == 0: Uy_free_count[i, j] += 1
+                if T13_isfree[i, j] == 0:     Uy_free_count[i, j] += 1
+                if T5_isfree[i - 1, j] == 0:  Uy_free_count[i, j] += 1
+                
+                # 変更点3: 下側の判定 (T5)
+                if i < nx:
+                    # 通常の内部：T5配列の中身をチェック
+                    if T5_isfree[i, j] == 0:      Uy_free_count[i, j] += 1
+                else:
+                    # i == nx (底面) の場合：
+                    # 下側は配列外（空気/Free）なので、無条件でカウントを加算
+                    Uy_free_count[i, j] += 1
 
     return Ux_free_count, Uy_free_count
 
@@ -181,6 +205,7 @@ t_max = 1.5 * x_length / cl / dt
 #               Viewer Class (Normalized, Titles, Scale Fixed)
 # =======================================================================
 class IntegratedViewer:
+    # ★変更: mask_matrix を追加
     def __init__(self, root, g_t1, g_t3, z_t1, z_t3, time_step, output_dir,
                  extent_global, extent_zoom, roi_rect_mm, base_name, mask_matrix=None):
         self.root = root
@@ -210,7 +235,7 @@ class IntegratedViewer:
         self.extent_global = extent_global
         self.extent_zoom = extent_zoom
         self.roi_rect_mm = roi_rect_mm
-        self.mask_matrix = mask_matrix # くさび形状マスク (0:空洞, 1:固体)
+        self.mask_matrix = mask_matrix  # ★保存
 
         os.makedirs(self.output_dir, exist_ok=True)
         self.n_frames = self.g_t1.shape[0]
@@ -220,7 +245,7 @@ class IntegratedViewer:
         self.setup_ui()
 
     def setup_ui(self):
-        self.root.title("Kusabi Simulation Viewer (Normalized)")
+        self.root.title("Kusabi Simulation Viewer")
         self.root.geometry("1000x800")
 
         main_frame = ttk.Frame(self.root)
@@ -239,7 +264,7 @@ class IntegratedViewer:
 
         vmin, vmax = -1.0, 1.0
 
-        # --- Global T1 ---
+        # Global T1
         self.im_g1 = self.ax_g1.imshow(
             self.g_t1[0], cmap="viridis", vmin=vmin, vmax=vmax, 
             aspect="auto", interpolation="nearest", extent=self.extent_global
@@ -247,34 +272,34 @@ class IntegratedViewer:
         self.ax_g1.set_title("Global T1")
         self.ax_g1.set_ylabel("Depth X (mm)")
         self.add_roi_rect(self.ax_g1)
-        self.draw_kusabi_outline(self.ax_g1, is_zoom=False) # 輪郭描画
+        self.draw_shape_outline(self.ax_g1, is_zoom=False) # ★輪郭線描画
 
-        # --- Global T3 ---
+        # Global T3
         self.im_g3 = self.ax_g3.imshow(
             self.g_t3[0], cmap="viridis", vmin=vmin, vmax=vmax, 
             aspect="auto", interpolation="nearest", extent=self.extent_global
         )
         self.ax_g3.set_title("Global T3")
         self.add_roi_rect(self.ax_g3)
-        self.draw_kusabi_outline(self.ax_g3, is_zoom=False) # 輪郭描画
+        self.draw_shape_outline(self.ax_g3, is_zoom=False) # ★輪郭線描画
 
-        # --- Zoom T1 ---
+        # Zoom T1
         self.im_z1 = self.ax_z1.imshow(
             self.z_t1[0], cmap="RdBu_r", vmin=vmin, vmax=vmax, 
             aspect="auto", interpolation="bilinear", extent=self.extent_zoom
         )
         self.ax_z1.set_title("Zoom T1")
         self.ax_z1.set_xlabel("Width Z (mm)"); self.ax_z1.set_ylabel("Depth X (mm)")
-        self.draw_kusabi_outline(self.ax_z1, is_zoom=True) # 輪郭描画
+        self.draw_shape_outline(self.ax_z1, is_zoom=True) # ★輪郭線描画
 
-        # --- Zoom T3 ---
+        # Zoom T3
         self.im_z3 = self.ax_z3.imshow(
             self.z_t3[0], cmap="RdBu_r", vmin=vmin, vmax=vmax, 
             aspect="auto", interpolation="bilinear", extent=self.extent_zoom
         )
         self.ax_z3.set_title("Zoom T3")
         self.ax_z3.set_xlabel("Width Z (mm)")
-        self.draw_kusabi_outline(self.ax_z3, is_zoom=True) # 輪郭描画
+        self.draw_shape_outline(self.ax_z3, is_zoom=True) # ★輪郭線描画
 
         self.fig.colorbar(self.im_z3, ax=[self.ax_g1, self.ax_g3, self.ax_z1, self.ax_z3], 
                           shrink=0.9, aspect=30, label="(Pa)")
@@ -301,6 +326,7 @@ class IntegratedViewer:
         self.btn_play = ttk.Button(btn_box, text="Play >", command=self.toggle_play)
         self.btn_play.pack(side=tk.LEFT, padx=10)
         ttk.Button(btn_box, text="Next >", command=self.step_forward).pack(side=tk.LEFT, padx=5)
+        
         ttk.Label(btn_box, text="Speed:").pack(side=tk.LEFT, padx=(20, 5))
         self.speed_var = tk.DoubleVar(value=30.0)
         ttk.Scale(btn_box, from_=1, to=60, variable=self.speed_var, orient=tk.HORIZONTAL, length=120).pack(side=tk.LEFT)
@@ -311,28 +337,73 @@ class IntegratedViewer:
 
         self.root.after(500, self.toggle_play)
 
-    def draw_kusabi_outline(self, ax, is_zoom=False):
-        """くさび形状の境界線（等高線）を描画する"""
+    # ★追加: hanen_ani から移植した輪郭線描画メソッド
+    def draw_shape_outline(self, ax, is_zoom=False):
+        """
+        中身を塗らず、ブロックの「輪郭線（境界線）」だけをカクカク描画する
+        （hlines, vlinesを使用）
+        """
         if self.mask_matrix is None:
             return
 
-        # 0:空洞, 1:固体 の境界(0.5)に線を引く
+        # --- 1. 描画するデータの準備 ---
         if is_zoom:
-            # 拡大表示用マスク切り出し
-            # Zoomインデックス: X[x_start:x_end], Y[y_start:y_end]
-            # self.mask_matrixは (nx+1, ny) だが T1に合わせて nx でスライス
-            nx_mask = self.mask_matrix.shape[0] - 1
-            mask_subset = self.mask_matrix[x_start:x_end, y_start:y_end]
-            
-            # contourは格子点中心のためextentをそのまま使用
-            ax.contour(mask_subset, levels=[0.5], colors='black', linewidths=1.0, 
-                       origin='upper', extent=self.extent_zoom)
+            # 拡大領域
+            # 配列のスライス
+            mask = self.mask_matrix[x_start:x_end, y_start:y_end]
+            extent = self.extent_zoom
         else:
-            # 全体表示用（元の解像度で描画してextentで合わせる＝綺麗に描ける）
-            # T13_isfree は nx+1 行あるので、表示用に nx 行に合わせる
-            mask_view = self.mask_matrix[0:nx, :]
-            ax.contour(mask_view, levels=[0.5], colors='black', linewidths=0.8, 
-                       origin='upper', extent=self.extent_global)
+            # 全体表示用
+            mask = self.mask_matrix[0:nx, :]
+            extent = self.extent_global
+
+        # マスクが空っぽなら何もしない
+        if np.all(mask == 0) or np.all(mask == 1):
+            return
+
+        # --- 2. 座標計算の準備 ---
+        # extent = [z_min, z_max, x_max, x_min] (origin='upper'の場合、y軸は上から下へ)
+        z_min, z_max, x_bot, x_top = extent
+        
+        rows, cols = mask.shape
+        
+        # 1ピクセルあたりのサイズ
+        dz = (z_max - z_min) / cols  # 横方向
+        dx = (x_bot - x_top) / rows  # 縦方向
+
+        # --- 3. 境界線の検出と描画 ---
+        
+        # 線の色と太さ
+        line_color = 'black'
+        line_width = 1.0 if is_zoom else 0.5
+
+        # --- 縦線 (Vertical Lines) の描画 ---
+        # 横方向に隣り合う値の差分をとる
+        diff_h = np.diff(mask, axis=1)
+        r_idx, c_idx = np.where(diff_h != 0)
+        
+        if len(r_idx) > 0:
+            # x座標 (横軸)
+            x_pos = z_min + (c_idx + 1) * dz
+            # y座標 (縦軸)
+            y_min = x_top + r_idx * dx
+            y_max = x_top + (r_idx + 1) * dx
+            
+            ax.vlines(x_pos, y_min, y_max, colors=line_color, linewidths=line_width)
+
+        # --- 横線 (Horizontal Lines) の描画 ---
+        # 縦方向に隣り合う値の差分をとる
+        diff_v = np.diff(mask, axis=0)
+        r_idx, c_idx = np.where(diff_v != 0)
+        
+        if len(r_idx) > 0:
+            # y座標 (縦軸)
+            y_pos = x_top + (r_idx + 1) * dx
+            # x座標 (横軸)
+            x_min_line = z_min + c_idx * dz
+            x_max_line = z_min + (c_idx + 1) * dz
+            
+            ax.hlines(y_pos, x_min_line, x_max_line, colors=line_color, linewidths=line_width)
 
     def add_roi_rect(self, ax):
         rz, rx, rw, rh = self.roi_rect_mm
@@ -341,6 +412,7 @@ class IntegratedViewer:
 
     def update_frame(self, frame_idx):
         frame_idx = int(np.clip(frame_idx, 0, self.n_frames - 1))
+        # Update all 4 images
         self.im_g1.set_array(self.g_t1[frame_idx])
         self.im_g3.set_array(self.g_t3[frame_idx])
         self.im_z1.set_array(self.z_t1[frame_idx])
@@ -416,6 +488,7 @@ class IntegratedViewer:
         except Exception as e:
             messagebox.showerror("Save Error", f"Failed:\n{e}")
 
+    # ★変更: mask_matrix も保存
     def save_data(self):
         if self.play_running: self.toggle_play()
         
@@ -429,16 +502,14 @@ class IntegratedViewer:
                 g_t3=self.g_t3,
                 z_t1=self.z_t1,
                 z_t3=self.z_t3,
-                # 再生に必要なメタデータ
                 time_step=self.time_step,
                 extent_global=self.extent_global,
                 extent_zoom=self.extent_zoom,
                 roi_rect_mm=self.roi_rect_mm,
                 base_name=self.base_name,
-                # ★追加: 黒線を描画するための形状データ
-                mask_matrix=self.mask_matrix 
+                mask_matrix=self.mask_matrix # ★追加
             )
-            messagebox.showinfo("Saved", f"Data saved successfully (with mask):\n{filename}")
+            messagebox.showinfo("Saved", f"Data saved successfully:\n{filename}")
             print(f"Saved: {filename}")
         except Exception as e:
             messagebox.showerror("Error", f"Failed to save data:\n{e}")
@@ -587,8 +658,7 @@ def main():
             extent_zoom=extent_zoom,
             roi_rect_mm=roi_rect_mm,
             base_name=base_name,
-            # ★変更: マスクデータを渡す
-            mask_matrix=T13_isfree_np 
+            mask_matrix=T13_isfree_np # ★変更: マスクを渡す
         )
         root.mainloop()
     except Exception:

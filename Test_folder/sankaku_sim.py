@@ -283,17 +283,3 @@ csv_filename = f"sankaku_cupy_pitch{int(f_pitch * 1e5)}_depth{int(f_depth * 1e5)
 csv_path = os.path.join(output_dir, csv_filename)
 np.savetxt(csv_path, wave, delimiter=',')
 print(f"保存しました → {csv_path}")
-
-# ---------------- プロット ----------------
-wave_data = np.loadtxt(csv_path, delimiter=',')
-time_axis = np.arange(len(wave_data))
-
-plt.figure(figsize=(10, 4))
-plt.plot(time_axis, wave_data, label=f'T1 average (Step={step_size})')
-plt.xlabel("Time step")
-plt.ylabel("Amplitude")
-plt.title(f"Waveform (Depth={f_depth*1000}mm, Step Size={step_size})")
-plt.grid(True)
-plt.legend()
-plt.tight_layout()
-plt.show()

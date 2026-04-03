@@ -240,7 +240,7 @@ if __name__ == "__main__":
     # target_sim_filename = "sankaku_cupy_pitch200_depth10.csv"
     # target_sim_filename = "sankaku_cupy_pitch125_depth20_step1.csv"
 
-    target_sim_filename = "kusabi2_cupy_pitch125_depth20.csv"
+    target_sim_filename = "kusabi_cupy_pitch125_depth20.csv"
     # target_sim_filename = "sankaku_cupy_pitch125_depth20_step1.csv"
 
     # target_sim_filename = "hanen_cupy_pitch125_depth20.csv"
