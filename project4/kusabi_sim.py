@@ -238,10 +238,3 @@ csv_name = f"kusabi2_cupy_pitch{int(f_pitch*1e5)}_depth{int(f_depth*1e5)}.csv"
 save_path = os.path.join(output_dir, csv_name)
 np.savetxt(save_path, wave, delimiter=',')
 print(f"Saved to: {save_path}")
-
-plt.figure(figsize=(10,4))
-plt.plot(wave)
-plt.title(f"Waveform (Step Size={step_size})")
-plt.xlabel("Time step")
-plt.ylabel("Amplitude")
-plt.show()

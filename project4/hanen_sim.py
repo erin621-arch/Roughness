@@ -267,11 +267,3 @@ save_path = os.path.join(output_dir, csv_name)
 
 np.savetxt(save_path, wave, delimiter=',')
 print(f"Saved to: {save_path}")
-
-plt.figure(figsize=(10,4))
-plt.plot(wave)
-plt.title(f"Hanen Flaw (w={f_width*1000}mm, Pitch={f_pitch*1000}mm)")
-plt.xlabel("Time step")
-plt.ylabel("Amplitude")
-plt.grid(True)
-plt.show()
