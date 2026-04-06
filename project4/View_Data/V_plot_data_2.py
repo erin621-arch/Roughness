@@ -24,7 +24,7 @@ hanen_width = 0.25e-3 #(固定)
 hanen_depth = 0.20e-3
 
 # ★ 保存先ディレクトリ設定
-# SAVE_DIR = r"C:\Users\cs16\Documents\Test_folder"
+# SAVE_DIR = r"C:\Users\cs16\Roughness\project4"  # 研究室PC
 SAVE_DIR = r"C:/Users/hisay/OneDrive/ドキュメント/test_folder"   # 自宅PC
 
 # ==================================================

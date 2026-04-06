@@ -10,7 +10,7 @@ from scipy.fft import rfft, rfftfreq
 # ============================================================
 #  設定 (環境に合わせて変更してください)
 # ============================================================
-DOC_PATH = r"C:\Users\cs16\Documents\Test_folder"
+DOC_PATH = r"C:\Users\cs16\Roughness\project4"
 # DOC_PATH = r"C:/Users/hisay/OneDrive/ドキュメント/test_folder"   # 自宅PC
 
 FREQ_MIN = 2.0e6  # [Hz]

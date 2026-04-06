@@ -128,7 +128,7 @@ if __name__ == "__main__":
 
     # --- パス設定 (環境に合わせて変更してください) ---
     
-    doc_path = r"C:/Users/cs16/Roughness/Test_folder"  # 研究室PC
+    doc_path = r"C:\Users\cs16\Roughness\project4"  # 研究室PC
     # doc_path = r"C:/Users/hisay/OneDrive/ドキュメント/Test_folder" # 自宅PC
     
     exp_base_dir = os.path.join(doc_path, "Experiment_Data")

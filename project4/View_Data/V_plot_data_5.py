@@ -9,7 +9,7 @@ from scipy.fft import rfft, rfftfreq
 # ============================================================
 #  設定
 # ============================================================
-# DOC_PATH = r"C:\Users\cs16\Documents\Test_folder"
+# DOC_PATH = r"C:\Users\cs16\Roughness\project4"
 DOC_PATH = r"C:/Users/hisay/OneDrive/ドキュメント/test_folder"   # 自宅PC
 
 EXP_BASE_DIR = os.path.join(DOC_PATH, "Experiment_Data")
