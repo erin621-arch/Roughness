@@ -13,7 +13,7 @@ import traceback
 # ================== 調整パラメータ ==================
 
 # 出力先
-output_dir = r"C:/Users/cs16/Roughness/Test_folder/tmp_output"
+output_dir = r"C:/Users/cs16/Roughness/project4/tmp_output"
 # output_dir = r"C:/Users/hisay/OneDrive/ドキュメント/test_folder/tmp_output"
 
 # ★半円/U字形状パラメータ (1つ分の形状)
