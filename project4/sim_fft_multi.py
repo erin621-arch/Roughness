@@ -14,8 +14,8 @@ from scipy.interpolate import interp1d
 # ================== パス & 解析対象パラメータ（ここだけいじればOK） ==================
 
 # シミュレーションCSVの場所
-# base_dir = r"C:\Users\cs16\Documents\Test_folder\tmp_output"   # 研究室PC用
-base_dir = r"C:\Users\hisay\OneDrive\ドキュメント\test_folder\tmp_output"   # 自宅PC用
+base_dir = r"C:\Users\cs16\Documents\Test_folder\tmp_output"   # 研究室PC用
+# base_dir = r"C:\Users\hisay\OneDrive\ドキュメント\test_folder\tmp_output"   # 自宅PC用
 
 # ファイル名プレフィックス（kukei_ori / kukei2 などを切り替えやすくする）
 # file_prefix = "kukei1_ori_cupy"
