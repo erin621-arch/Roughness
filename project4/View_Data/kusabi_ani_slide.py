@@ -150,11 +150,11 @@ for ms in range(len(wave4)):
 
 # ---------------- 計測設定 ----------------
 sy = int(ny / 2)
-probe_d = 0.007  # 探触子の幅 [m]
+probe_d = 0.007
 sy_l = sy - int(probe_d / mesh_length / 2)
 sy_r = sy + int(probe_d / mesh_length / 2)
 
-t_max = 2.3 * x_length / cl / dt
+t_max = 2.5 * x_length / cl / dt
 
 
 # =======================================================================
@@ -202,21 +202,31 @@ class ViewerSingle:
 
         vmin, vmax = -1.0, 1.0
 
-        # Global T1 表示
+        # Global T1 波形表示 (レイヤー1)
         self.im = self.ax.imshow(
             self.g_t1[0], cmap="viridis", vmin=vmin, vmax=vmax, 
-            aspect="auto", interpolation="nearest", extent=self.extent_global
+            aspect="auto", interpolation="nearest", extent=self.extent_global, zorder=1
         )
         self.ax.set_title("Global T1")
         self.ax.set_xlabel("Width Z (mm)")
         self.ax.set_ylabel("Depth X (mm)")
         
-        # 輪郭線描画
+        # ★きず部分を白く塗りつぶす (レイヤー2)
+        if self.mask_matrix is not None:
+            mask = self.mask_matrix[0:nx, :]  # (nx, ny)
+            # RGBA画像を作成 (初期値0で全て透明)
+            rgba_mask = np.zeros((mask.shape[0], mask.shape[1], 4), dtype=np.float32)
+            # mask == 0 (空洞部分) のピクセルだけを 白 (不透明) に設定
+            rgba_mask[mask == 0] = [1.0, 1.0, 1.0, 1.0]
+            
+            self.ax.imshow(rgba_mask, extent=self.extent_global, aspect="auto", interpolation="nearest", zorder=2)
+            
+        # 輪郭線描画 (白抜きの境界を際立たせるための黒線 / レイヤー3)
         self.draw_shape_outline(self.ax) 
 
-        # ★探触子の位置を黄緑色のマークで囲う
+        # 探触子の位置を黄緑色のマークで囲う (レイヤー4)
         pz, px, pw, ph = self.probe_rect_mm
-        probe_patch = Rectangle((pz, px), pw, ph, linewidth=3, edgecolor="lawngreen", facecolor="none")
+        probe_patch = Rectangle((pz, px), pw, ph, linewidth=3, edgecolor="lawngreen", facecolor="none", zorder=4)
         self.ax.add_patch(probe_patch)
 
         self.fig.colorbar(self.im, ax=self.ax, shrink=0.9, aspect=30, label="(Pa)")
@@ -280,7 +290,7 @@ class ViewerSingle:
             x_pos = z_min + (c_idx + 1) * dz
             y_min = x_top + r_idx * dx
             y_max = x_top + (r_idx + 1) * dx
-            ax.vlines(x_pos, y_min, y_max, colors=line_color, linewidths=line_width)
+            ax.vlines(x_pos, y_min, y_max, colors=line_color, linewidths=line_width, zorder=3)
 
         # 横線
         diff_v = np.diff(mask, axis=0)
@@ -289,7 +299,7 @@ class ViewerSingle:
             y_pos = x_top + (r_idx + 1) * dx
             x_min_line = z_min + c_idx * dz
             x_max_line = z_min + (c_idx + 1) * dz
-            ax.hlines(y_pos, x_min_line, x_max_line, colors=line_color, linewidths=line_width)
+            ax.hlines(y_pos, x_min_line, x_max_line, colors=line_color, linewidths=line_width, zorder=3)
 
     def update_frame(self, frame_idx):
         frame_idx = int(np.clip(frame_idx, 0, self.n_frames - 1))
