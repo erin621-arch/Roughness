@@ -42,46 +42,47 @@ sim_a3 = sim_a2 + exp_a3 - exp_a2
 data_size = exp_a3 - exp_a2
 
 
-depth_125 = [2, 5, 10, 14, 18, 20, 23]
-depth_150 = [3, 4, 6, 10, 15, 20]
-depth_175 = [3, 4, 6, 10, 15, 21]
-depth_200 = [2, 4, 6, 10, 17, 20, 22, 28]
-
-
-pitch_125 = [10, 30, 70, 10, 20, 80, 30]
-pitch_150 = [150, 160, 170, 70, 80, 90]
-pitch_175 = [180, 190, 200, 100, 110, 120]
-pitch_200 = [40, 50, 60, 90, 40, 100, 50, 60]
-
-pitch_list = [1250, 1500, 1750, 2000]
-rough_list = {
-    1250: len(pitch_125),
-    1500: len(pitch_150),
-    1750: len(pitch_175),
-    2000: len(pitch_200)
+# 形状ごとの実験データ depth 一覧
+# Kukei のみ depth=15 のシミュレーションデータなし
+_depth_exp = {
+    "Kukei":   {125: [10, 20],       150: [10, 15, 20], 175: [10, 15, 20], 200: [10, 15, 20]},
+    "Sankaku": {125: [10, 15, 20],   150: [10, 15, 20], 175: [10, 15, 20], 200: [10, 15, 20]},
+    "Kusabi":  {125: [10, 15, 20],   150: [10, 15, 20], 175: [10, 15, 20], 200: [10, 15, 20]},
+    "Hanen":   {125: [12.5, 15, 20], 150: [12.5, 15, 20], 175: [12.5, 15, 20], 200: [12.5, 15, 20]},
 }
 
-depth_index = {
-    0: 0,
-    1250: len(depth_125),
-    1500: len(depth_150),
-    1750: len(depth_175),
-    2000: len(depth_200)
+# 形状ごとのシミュレーションデータ depth 一覧
+_depth_sim = {
+    "Kukei":   {125: [10, 20],       150: [10, 20],       175: [10, 20],       200: [10, 20]},
+    "Sankaku": {125: [10, 15, 20],   150: [10, 15, 20],   175: [10, 15, 20],   200: [10, 15, 20]},
+    "Kusabi":  {125: [10, 15, 20],   150: [10, 15, 20],   175: [10, 15, 20],   200: [10, 15, 20]},
+    "Hanen":   {125: [12.5, 15, 20], 150: [12.5, 15, 20], 175: [12.5, 15, 20], 200: [12.5, 15, 20]},
 }
 
-rough_list_all = {
-    1250: pitch_125,
-    1500: pitch_150,
-    1750: pitch_175,
-    2000: pitch_200
-}
+# ============================================================
+# ★ 形状選択 (ここを変更する)
+# ============================================================
+target_shape = "Kukei"  # "Kukei" / "Sankaku" / "Kusabi" / "Hanen"
 
-depth_index_all = {
-    1250: depth_125,
-    1500: depth_150,
-    1750: depth_175,
-    2000: depth_200
-}
+pitch_list = [125, 150, 175, 200]
+depth_index_all = _depth_exp[target_shape]   # 実験データの depth 一覧
+depth_sim_all   = _depth_sim[target_shape]   # シミュレーションデータの depth 一覧
+
+depth_125 = depth_index_all[125]
+depth_150 = depth_index_all[150]
+depth_175 = depth_index_all[175]
+depth_200 = depth_index_all[200]
+
+rough_list  = {p: len(depth_index_all[p]) for p in pitch_list}
+depth_index = {0: 0, **{p: len(depth_index_all[p]) for p in pitch_list}}
+
+# ============================================================
+# パス設定 (自分のPCに合わせて変更)
+# ============================================================
+doc_path     = r"C:/Users/cs16/Roughness/project4"  # 研究室PC
+sim_base_dir = os.path.join(doc_path, "Simulation_Data")
+exp_base_dir = os.path.join(doc_path, "Experiment_Data")
+output_dir   = os.path.join(doc_path, "tmp_output")
 
 
 def kiritori2(data_sumple, left, right):
@@ -111,11 +112,11 @@ def make_fftdata(data, dt_sumple):
 
 def simu_data_import(filenames):
     data0 = np.loadtxt(
-        f"C:\\Users\\Fujii Kotaro\\project1\\data_all\\cupy_pitch100_depth0.csv")
+        os.path.join(sim_base_dir, "Smooth", "smooth_cupy_pitch125_depth0.csv"))
     data_set_raw = data0
     for filename in filenames:
         data = np.loadtxt(
-            f"C:\\Users\\Fujii Kotaro\\project1\\data_all\\{filename}")
+            os.path.join(sim_base_dir, target_shape, filename))
         print(filename)
         data_set_raw = np.vstack([data_set_raw, data])
     return data_set_raw
@@ -222,7 +223,11 @@ def import_data(pitch, depth):
     number_max = []
     data = []
 
-    csv_files = glob.glob(os.path.join(f"C:\\Users\\manat\\project2\\experience_new\\{pitch}_{depth}", "*.csv"))
+    if pitch == 0 and depth == 0:
+        target_dir = os.path.join(exp_base_dir, "Smooth", "0_0")
+    else:
+        target_dir = os.path.join(exp_base_dir, target_shape, f"{pitch}_{depth}")
+    csv_files = glob.glob(os.path.join(target_dir, "*.csv"))
     i = 0
     for csv_file in csv_files:
         print(f"importing : {csv_file}")
@@ -243,19 +248,9 @@ def import_data(pitch, depth):
 
 
 def depthrough(pitch, rough):
-    match pitch:
-        case 0:
-            return 0, 0
-        case 1250:
-            return depth_125[rough]
-        case 2000:
-            return depth_200[rough]
-        case 1500:
-            return depth_150[rough]
-        case 1750:
-            return depth_175[rough]
-        case _:
-            return 0
+    if pitch == 0:
+        return 0
+    return depth_index_all[pitch][rough]
 
 def make_dataset_exp_y_new(pitch, rough):
     depth_set = np.full(1, float(depthrough(pitch, rough)))
@@ -273,15 +268,15 @@ def make_dataset_exp_new(pitch, depth, a1):
 
 
 def select_pitch_and_image(pitch, depth_list):
-    sim_data_ref = np.loadtxt(r"C:\Users\manat\project2\data_all\cupy_pitch125_depth0.csv")
+    sim_data_ref = np.loadtxt(os.path.join(sim_base_dir, "Smooth", "smooth_cupy_pitch125_depth0.csv"))
     yf_ref, freq_ref = make_fftdata(kiritori2(interpolate_sim_one(sim_data_ref)[8000:], left, right), exp_dt)
-    
+
     sim_data = np.zeros((len(depth_list), len(sim_data_ref)))
     yf = np.zeros((len(depth_list), len(yf_ref)))
     freq = np.zeros((len(depth_list), len(freq_ref)))
-    
+
     for i in range(len(depth_list)):
-        sim_data[i] = np.loadtxt(f"C:\\Users\\manat\\project2\\data_all\\cupy_pitch{pitch}_depth{depth_list[i]}.csv")
+        sim_data[i] = np.loadtxt(os.path.join(sim_base_dir, target_shape, f"{target_shape.lower()}_cupy_pitch{pitch}_depth{depth_list[i]}.csv"))
         yf[i], freq[i] = make_fftdata(kiritori2(interpolate_sim_one(sim_data[i])[8000:], left, right), exp_dt)
 
     plt.rcParams["font.size"] = 16
@@ -294,7 +289,8 @@ def select_pitch_and_image(pitch, depth_list):
     plt.xlabel("Frequency [Hz]", fontsize=17)
     plt.legend(ncol=2, loc='upper left', fontsize=18)
     plt.tight_layout()
-    plt.savefig(fr"C:\Users\manat\project2\tmp_output\sim_yfs_{pitch}.eps", format="eps", dpi=300)
+    os.makedirs(output_dir, exist_ok=True)
+    plt.savefig(os.path.join(output_dir, f"sim_yfs_{pitch}.eps"), format="eps", dpi=300)
     plt.show()
 
 
@@ -321,20 +317,21 @@ def select_pitch_and_image_exp(pitch, depth_list):
     plt.xlabel("Frequency [Hz]", fontsize=17)
     plt.legend(ncol=2, loc='upper left', fontsize=18)
     plt.tight_layout()
-    plt.savefig(fr"C:\Users\manat\project2\tmp_output\exp_yfs_{pitch}.eps", format="eps", dpi=300)
+    os.makedirs(output_dir, exist_ok=True)
+    plt.savefig(os.path.join(output_dir, f"exp_yfs_{pitch}.eps"), format="eps", dpi=300)
     plt.show()
 
 
 def select_sim(pitch, depth_list):
-    sim_data_ref = np.loadtxt(r"C:\Users\manat\project2\data_all\cupy_pitch125_depth0.csv")
+    sim_data_ref = np.loadtxt(os.path.join(sim_base_dir, "Smooth", "smooth_cupy_pitch125_depth0.csv"))
     yf_ref, freq_ref = make_fftdata(kiritori2(interpolate_sim_one(sim_data_ref)[8000:], left, right), exp_dt)
-    
+
     sim_data = np.zeros((len(depth_list), len(sim_data_ref)))
     yf = np.zeros((len(depth_list), len(yf_ref)))
     freq = np.zeros((len(depth_list), len(freq_ref)))
-    
+
     for i in range(len(depth_list)):
-        sim_data[i] = np.loadtxt(f"C:\\Users\\manat\\project2\\data_all\\cupy_pitch{pitch}_depth{depth_list[i]}.csv")
+        sim_data[i] = np.loadtxt(os.path.join(sim_base_dir, target_shape, f"{target_shape.lower()}_cupy_pitch{pitch}_depth{depth_list[i]}.csv"))
         yf[i], freq[i] = make_fftdata(kiritori2(interpolate_sim_one(sim_data[i])[8000:], left, right), exp_dt)
 
 

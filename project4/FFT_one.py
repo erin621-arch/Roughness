@@ -168,32 +168,17 @@ def print_metrics(name, data_exp, data_sim):
 
 # --- パス生成ヘルパー ---
 
-def get_exp_folder_path(base_root, shape, pitch, depth):
-    """実験データのフォルダパスを自動生成"""
-    
+def get_exp_folder_path(base_root, shape, pitch_int, depth_int):
+    """実験データのフォルダパスを自動生成 (整数コード: 値×1e5, 例 1.25mm→125)"""
     if shape.lower() == "smooth":
         return os.path.join(base_root, "Smooth", "0_0")
-
     shape_map = {
         "sankaku": "Sankaku",
         "kusabi":  "Kusabi",
         "hanen":   "Hanen"
     }
-    dir_shape = shape_map.get(shape, shape.capitalize())
-    
-    p_val = pitch.replace("p", "").replace(".", "")
-    
-    try:
-        d_num = float(depth.replace("d", ""))
-        val_100 = d_num * 100
-        if val_100.is_integer():
-            d_str = str(int(val_100))
-        else:
-            d_str = str(val_100)
-    except ValueError:
-        d_str = depth.replace("d", "").replace(".", "")
-
-    dir_name = f"{p_val}_{d_str}"
+    dir_shape = shape_map.get(shape.lower(), shape.capitalize())
+    dir_name = f"{pitch_int}_{depth_int}"
     return os.path.join(base_root, dir_shape, dir_name)
 
 def get_sim_folder_path(base_root, shape):
@@ -229,23 +214,17 @@ if __name__ == "__main__":
     # ============================================================
     # ★ 2. 実験データの条件選択
     # ============================================================
-    target_shape = "Kusabi"   # "sankaku" / "kusabi" / "hanen"
-    target_pitch = "p1.25"     # "p1.25" ...
-    target_depth = "d0.20"     # "d0.10" (フォルダ名20), "d0.125" (フォルダ名12.5)
-    
-    # ============================================================
-    # ★ 3. シミュレーションファイル名の指定（手動入力）
-    # ============================================================
-    
-    # target_sim_filename = "sankaku_cupy_pitch200_depth10.csv"
-    # target_sim_filename = "sankaku_cupy_pitch125_depth20_step1.csv"
+    target_shape = "kusabi"  # "sankaku" / "kusabi" / "hanen"
+    target_pitch = 125        # ピッチ整数コード (1.25e-3 m → 125)
+    target_depth = 20         # 深さ整数コード (0.20e-3 m → 20)
 
-    target_sim_filename = "kusabi_cupy_pitch125_depth20.csv"
-    # target_sim_filename = "sankaku_cupy_pitch125_depth20_step1.csv"
+    # ============================================================
+    # ★ 3. シミュレーションファイル名の指定
+    # ============================================================
+    # 通常は★2 の値から自動生成される。step~ファイル等の特殊ケースは手動で上書き。
+    target_sim_filename = f"{target_shape}_cupy_pitch{target_pitch}_depth{target_depth}.csv"
+    # target_sim_filename = "kusabi_cupy_pitch125_depth20_step5.csv"  # 特殊ファイルの場合
 
-    # target_sim_filename = "hanen_cupy_pitch125_depth20.csv"
-    # target_sim_filename = "sankaku_cupy_pitch125_depth20_step1.csv"
-    
     # ============================================================
 
     print("-" * 60)
@@ -253,19 +232,10 @@ if __name__ == "__main__":
 
     # --- パス設定 ---
     target_exp_dir = get_exp_folder_path(exp_base_dir, target_shape, target_pitch, target_depth)
-    sim_shape_dir = get_sim_folder_path(sim_base_dir, target_shape)
+    sim_shape_dir  = get_sim_folder_path(sim_base_dir, target_shape)
     target_sim_path = os.path.join(sim_shape_dir, target_sim_filename)
-    smooth_exp_dir = get_exp_folder_path(exp_base_dir, "smooth", "", "") 
-    p_val = target_pitch.replace("p", "").replace(".", "")
-    fname_smooth_sim = f"kukei_ori_cupy_pitch{p_val}_depth0.csv"
-    smooth_sim_path = os.path.join(sim_base_dir, "Smooth", fname_smooth_sim)
-    
-    if not os.path.exists(smooth_sim_path):
-        alt_name = f"smooth_cupy_pitch{p_val}_depth0.csv"
-        smooth_sim_path = os.path.join(sim_base_dir, "Smooth", alt_name)
-    if not os.path.exists(smooth_sim_path):
-        fname_backup = "kukei_ori_cupy_pitch125_depth0.csv"
-        smooth_sim_path = os.path.join(sim_base_dir, "Smooth", fname_backup)
+    smooth_exp_dir  = os.path.join(exp_base_dir, "Smooth", "0_0")
+    smooth_sim_path = os.path.join(sim_base_dir, "Smooth", "smooth_cupy_pitch125_depth0.csv")
 
     print(f"【Target】 {target_shape} / {target_pitch} / {target_depth}")
     print(f"  Exp Dir : {target_exp_dir}")

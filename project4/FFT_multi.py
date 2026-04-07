@@ -27,21 +27,32 @@ freq_max = 8.0e6  # [Hz]
 # ============================================================
 # ★ 2. 対象形状・ピッチの指定
 # ============================================================
-target_shape = "sankaku"   # "sankaku" / "kusabi" / "hanen"
-target_pitch = "p1.25"     # "p1.25" / "p1.50" / "p2.00"
+target_shape = "sankaku"  # "sankaku" / "kusabi" / "hanen"
+target_pitch = 125         # ピッチ整数コード (1.25e-3 m → 125)
 
 # ============================================================
-# ★ 3. シミュレーションファイル名の指定（手動入力）
+# ★ 3. 深さの指定
 # ============================================================
-
 # 単一深さ確認用（デバッグ・波形目視用）
-target_sim_filename_single = "sankaku_cupy_pitch125_depth10.csv"
+target_depth_single = 10   # 深さ整数コード (0.10e-3 m → 10)
 
 # 複数深さ比較用（リストにすべて列挙）
+target_depths = [10, 20]   # 深さ整数コードのリスト
+
+# --- ファイル名自動生成 ---
+target_sim_filename_single = f"{target_shape}_cupy_pitch{target_pitch}_depth{target_depth_single}.csv"
+# step~など特殊ファイルの場合は手動で上書き:
+# target_sim_filename_single = "sankaku_cupy_pitch125_depth10_step5.csv"
+
 target_sim_filenames = [
-    "sankaku_cupy_pitch125_depth10.csv",
-    "sankaku_cupy_pitch125_depth20.csv",
+    f"{target_shape}_cupy_pitch{target_pitch}_depth{d}.csv"
+    for d in target_depths
 ]
+# 特殊ファイルが混在する場合は手動で上書き:
+# target_sim_filenames = [
+#     "sankaku_cupy_pitch125_depth10.csv",
+#     "sankaku_cupy_pitch125_depth20_step5.csv",
+# ]
 
 # ============================================================
 
