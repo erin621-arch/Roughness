@@ -198,7 +198,7 @@ sy_l = sy - int(probe_d / mesh_length / 2)
 sy_r = sy + int(probe_d / mesh_length / 2)
 
 # くさび用は少し長めに計算
-t_max = 1.5 * x_length / cl / dt
+t_max = 1.3 * x_length / cl / dt
 
 
 # =======================================================================

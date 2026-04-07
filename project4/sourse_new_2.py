@@ -62,7 +62,7 @@ _depth_sim = {
 # ============================================================
 # ★ 形状選択 (ここを変更する)
 # ============================================================
-target_shape = "Kukei"  # "Kukei" / "Sankaku" / "Kusabi" / "Hanen"
+target_shape = "Kusabi"  # "Kukei" / "Sankaku" / "Kusabi" / "Hanen"
 
 pitch_list = [125, 150, 175, 200]
 depth_index_all = _depth_exp[target_shape]   # 実験データの depth 一覧
@@ -77,7 +77,7 @@ rough_list  = {p: len(depth_index_all[p]) for p in pitch_list}
 depth_index = {0: 0, **{p: len(depth_index_all[p]) for p in pitch_list}}
 
 # ============================================================
-# パス設定 (自分のPCに合わせて変更)
+# パス設定 (PCに合わせて変更)
 # ============================================================
 doc_path     = r"C:/Users/cs16/Roughness/project4"  # 研究室PC
 sim_base_dir = os.path.join(doc_path, "Simulation_Data")
