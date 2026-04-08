@@ -47,7 +47,7 @@ def isfree_kusabi_viz(nx, nz, f_pitch, f_depth, mesh_length, step_size):
                 cut_top = nx - current_depth
                 cut_top = max(0, cut_top)
 
-                T13_isfree[cut_top : nx, z] = 0
+                T13_isfree[cut_top : nx + 1 , z] = 0
                 T5_isfree[cut_top : nx, z] = 0
                 T5_isfree[cut_top : nx, z+1] = 0
                 
@@ -89,6 +89,17 @@ def around_free(T13_isfree, T5_isfree):
                 if T5_isfree[i - 1, j] == 0:  Uz_free_count[i, j] += 1
             if i < nx and j < nz + 1:
                 if T5_isfree[i, j] == 0:      Uz_free_count[i, j] += 1
+
+    # ★後処理：4方向すべてが外枠または空洞のUzノードを非活性に強制
+    dir1 = np.ones((nx + 1, nz + 1), dtype=bool)
+    dir1[:, 1:] = (T13_isfree == 0)
+    dir2 = np.ones((nx + 1, nz + 1), dtype=bool)
+    dir2[:, :nz] = (T13_isfree == 0)
+    dir3 = np.ones((nx + 1, nz + 1), dtype=bool)
+    dir3[1:, :] = (T5_isfree == 0)
+    dir4 = np.ones((nx + 1, nz + 1), dtype=bool)
+    dir4[:nx, :] = (T5_isfree == 0)
+    Uz_free_count[dir1 & dir2 & dir3 & dir4] = 4
 
     return Ux_free_count, Uz_free_count
 
