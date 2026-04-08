@@ -25,14 +25,14 @@ step_size = 1
 
 # ---------------- 基本パラメータ ----------------
 x_length = 0.02   # x方向の長さ [m]
-y_length = 0.04   # y方向の長さ [m]
+z_length = 0.04   # z方向の長さ [m]
 mesh_length = 1.00e-5  # メッシュ長 [m]
 
 nx = int(x_length / mesh_length)
-ny = int(y_length / mesh_length)
+nz = int(z_length / mesh_length)
 
 dx = x_length / nx
-dy = y_length / ny
+dz = z_length / nz
 
 rho = 7840
 E = 206 * 1e9
@@ -53,40 +53,40 @@ k = 1 / lam
 n = T / dt
 
 # ---------------- 三角きず生成関数（高さ可変・対称化版） ----------------
-def isfree_symmetric(nx, ny, f_width, f_pitch, f_depth, mesh_length, step_size):
+def isfree_symmetric(nx, nz, f_width, f_pitch, f_depth, mesh_length, step_size):
     # 1:通常 / 0:自由境界（ゼロにする領域）
-    T13_isfree = np.ones((nx + 1, ny))
-    T5_isfree  = np.ones((nx, ny + 1))
+    T13_isfree = np.ones((nx + 1, nz))
+    T5_isfree  = np.ones((nx, nz + 1))
 
     # --- 1. 幅の決定（対称性のため奇数に固定） ---
     mn_w = int(round(f_width / mesh_length))
     if mn_w % 2 == 0:
         mn_w -= 1  # 偶数なら1引いて奇数にする
-    
+
     # --- 2. ピッチと隙間の計算 ---
     mn_p_val = max(1, int(round(f_pitch / mesh_length)))
     mn_nf = max(0, mn_p_val - 2 * mn_w)
     mn_period = mn_w + mn_nf
 
     # 外枠の境界条件設定
-    T13_isfree[0, 0:ny]  = 0
-    T13_isfree[nx, 0:ny] = 0
+    T13_isfree[0, 0:nz]  = 0
+    T13_isfree[nx, 0:nz] = 0
     T5_isfree[0:nx, 0]   = 0
-    T5_isfree[0:nx, ny]  = 0
+    T5_isfree[0:nx, nz]  = 0
 
     # きずの数
-    num_f = int(np.ceil(ny / mn_period))
+    num_f = int(np.ceil(nz / mn_period))
 
     # --- 3. 深さのメッシュ数 ---
     mn_d = int(round(f_depth / mesh_length))
 
     for i in range(num_f):
         # 横方向の位置決め
-        y_start = i * mn_period          
-        if y_start >= ny: break
-            
-        y_end = min(y_start + mn_w, ny)
-        y_center = (y_start + y_end) // 2
+        z_start = i * mn_period
+        if z_start >= nz: break
+
+        z_end = min(z_start + mn_w, nz)
+        z_center = (z_start + z_end) // 2
 
         # 深さ方向のループ（底面から上へ）
         for d in range(mn_d):
@@ -94,10 +94,10 @@ def isfree_symmetric(nx, ny, f_width, f_pitch, f_depth, mesh_length, step_size):
             if xi < 0: break
 
             # --- ★改良ロジック: 任意の高さ(step_size)で階段を作る ---
-            
-            # 深さを step_size 単位で切り捨てる（例: step=2なら 0,1->0 / 2,3->2 ...）
+
+            # 深さを step_size 単位で切り捨てる
             d_step = (d // step_size) * step_size
-            
+
             # (A) 階段状になった深さ(d_step)を使って幅を計算
             raw_w = mn_w * (1.0 - (d_step) / mn_d)
             width_at_d = int(round(raw_w))
@@ -105,49 +105,49 @@ def isfree_symmetric(nx, ny, f_width, f_pitch, f_depth, mesh_length, step_size):
             # (B) 強制的に奇数にする（左右対称にするため）
             if width_at_d % 2 == 0:
                 width_at_d -= 1
-            
+
             # (C) 最低幅は1とする
             if width_at_d < 1:
                 width_at_d = 1
-            
+
             # --- 配列への適用 ---
             half = width_at_d // 2
-            yl = max(y_center - half, 0)
-            yr = min(y_center + half + 1, ny)
+            zl = max(z_center - half, 0)
+            zr = min(z_center + half + 1, nz)
 
-            if yl < yr:
-                T5_isfree[xi, yl:yr] = 0
+            if zl < zr:
+                T5_isfree[xi, zl:zr] = 0
                 if xi < nx + 1:
-                    T13_isfree[xi, yl:yr] = 0
+                    T13_isfree[xi, zl:zr] = 0
 
     return T13_isfree, T5_isfree
 
 # ---------------- 自由境界近傍の設定 ----------------
 def around_free(T13_isfree, T5_isfree):
-    Ux_free_count = np.zeros((nx, ny), dtype=float)
-    Uy_free_count = np.zeros((nx + 1, ny + 1), dtype=float)
+    Ux_free_count = np.zeros((nx, nz), dtype=float)
+    Uz_free_count = np.zeros((nx + 1, nz + 1), dtype=float)
 
     # Ux セル
     for i in range(nx):
-        for j in range(ny):
+        for j in range(nz):
             if T13_isfree[i, j] == 0: Ux_free_count[i, j] += 1
             if T13_isfree[i + 1, j] == 0: Ux_free_count[i, j] += 1
             if T5_isfree[i, j] == 0: Ux_free_count[i, j] += 1
             if T5_isfree[i, j + 1] == 0: Ux_free_count[i, j] += 1
 
-    # Uy ノード
+    # Uz ノード
     for i in range(nx + 1):
-        for j in range(ny + 1):
-            if j == 0 or j == ny: Uy_free_count[i, j] += 1
-            if i == 0 or i == nx: Uy_free_count[i, j] += 1
+        for j in range(nz + 1):
+            if j == 0 or j == nz: Uz_free_count[i, j] += 1
+            if i == 0 or i == nx: Uz_free_count[i, j] += 1
 
-            if 0 < i < nx and 0 < j < ny:
-                if T13_isfree[i, j - 1] == 0: Uy_free_count[i, j] += 1
-                if T13_isfree[i, j] == 0: Uy_free_count[i, j] += 1
-                if T5_isfree[i - 1, j] == 0: Uy_free_count[i, j] += 1
-                if T5_isfree[i, j] == 0: Uy_free_count[i, j] += 1
+            if 0 < i < nx and 0 < j < nz:
+                if T13_isfree[i, j - 1] == 0: Uz_free_count[i, j] += 1
+                if T13_isfree[i, j] == 0: Uz_free_count[i, j] += 1
+                if T5_isfree[i - 1, j] == 0: Uz_free_count[i, j] += 1
+                if T5_isfree[i, j] == 0: Uz_free_count[i, j] += 1
 
-    return Ux_free_count, Uy_free_count
+    return Ux_free_count, Uz_free_count
 
 # ---------------- 入射波形 ----------------
 wn = 2.5
@@ -158,40 +158,40 @@ for ms in range(len(wave4)):
     wave4[ms] = wave2 * wave3
 
 # ---------------- 音源・計測設定 ----------------
-sy = int(ny / 2)
+sz = int(nz / 2)
 sx = 0
 probe_d = 0.007
-sy_l = sy - int(probe_d / mesh_length / 2)
-sy_r = sy + int(probe_d / mesh_length / 2)
+sz_l = sz - int(probe_d / mesh_length / 2)
+sz_r = sz + int(probe_d / mesh_length / 2)
 
 t_max = 4 * x_length / cl / dt
 
 # ---------------- きずパラメータ確認 ----------------
 print(f"f_pitch = {f_pitch}")
 print(f"f_depth = {f_depth}")
-print(f"Step Size = {step_size} mesh(es)") # 確認用表示
+print(f"Step Size = {step_size} mesh(es)")
 
 # ---------------- FDTD配列準備 ----------------
-T1 = cp.zeros((nx + 1, ny), dtype=float) #float32に
-T3 = cp.zeros((nx + 1, ny), dtype=float)
-T5 = cp.zeros((nx, ny + 1), dtype=float)
-Ux = cp.zeros((nx, ny), dtype=float)
-Uy = cp.zeros((nx + 1, ny + 1), dtype=float)
+T1 = cp.zeros((nx + 1, nz), dtype=float)
+T3 = cp.zeros((nx + 1, nz), dtype=float)
+T5 = cp.zeros((nx, nz + 1), dtype=float)
+Ux = cp.zeros((nx, nz), dtype=float)
+Uz = cp.zeros((nx + 1, nz + 1), dtype=float)
 
 wave = np.zeros(int(t_max))
 
 dtx = dt / dx
-dty = dt / dy
+dtz = dt / dz
 
-# 初期化（引数に step_size を追加）
-T13_isfree_np, T5_isfree_np = isfree_symmetric(nx, ny, f_width, f_pitch, f_depth, mesh_length, step_size)
-Ux_free_count_np, Uy_free_count_np = around_free(T13_isfree_np, T5_isfree_np)
+# 初期化
+T13_isfree_np, T5_isfree_np = isfree_symmetric(nx, nz, f_width, f_pitch, f_depth, mesh_length, step_size)
+Ux_free_count_np, Uz_free_count_np = around_free(T13_isfree_np, T5_isfree_np)
 
 # GPUへ転送
 T13_isfree = cp.asarray(T13_isfree_np)
 T5_isfree = cp.asarray(T5_isfree_np)
 Ux_free_count = cp.asarray(Ux_free_count_np)
-Uy_free_count = cp.asarray(Uy_free_count_np)
+Uz_free_count = cp.asarray(Uz_free_count_np)
 
 start_time = time.time()
 
@@ -202,31 +202,31 @@ for t in range(int(t_max)):
 
     # (1) 静的境界
     T5[0:nx, 0] = 0
-    T5[0:nx, ny] = 0
-    T3[0, 0:ny] = 0
-    T1[nx, 0:ny] = 0
-    T3[nx, 0:ny] = 0
+    T5[0:nx, nz] = 0
+    T3[0, 0:nz] = 0
+    T1[nx, 0:nz] = 0
+    T3[nx, 0:nz] = 0
     T1[0, 0] = 0
     T3[0, 0] = 0
     T5[0, 0] = 0
 
-    # (2) Uy 更新
-    Uy[1:nx, 0]  = Uy[1:nx, 0]  - (4 / rho) * dtx * (T3[1:nx, 0])
-    Uy[1:nx, ny] = Uy[1:nx, ny] - (4 / rho) * dtx * (-1 * T3[1:nx, ny - 1])
-    Uy[nx, 1:ny] = Uy[nx, 1:ny] - (4 / rho) * dtx * (-1 * T5[nx - 1, 1:ny])
+    # (2) Uz 更新
+    Uz[1:nx, 0]  = Uz[1:nx, 0]  - (4 / rho) * dtx * (T3[1:nx, 0])
+    Uz[1:nx, nz] = Uz[1:nx, nz] - (4 / rho) * dtx * (-1 * T3[1:nx, nz - 1])
+    Uz[nx, 1:nz] = Uz[nx, 1:nz] - (4 / rho) * dtx * (-1 * T5[nx - 1, 1:nz])
 
     # (3) 応力更新
-    T1[1:nx, 0:ny] = T1[1:nx, 0:ny] - dtx * (
-        (c11 * (Ux[1:nx, 0:ny] - Ux[0:nx - 1, 0:ny])) +
-        (c13 * (Uy[1:nx, 1:ny + 1] - Uy[1:nx, 0:ny]))
+    T1[1:nx, 0:nz] = T1[1:nx, 0:nz] - dtx * (
+        (c11 * (Ux[1:nx, 0:nz] - Ux[0:nx - 1, 0:nz])) +
+        (c13 * (Uz[1:nx, 1:nz + 1] - Uz[1:nx, 0:nz]))
     )
-    T3[1:nx, 0:ny] = T3[1:nx, 0:ny] - dtx * (
-        (c13 * (Ux[1:nx, 0:ny] - Ux[0:nx - 1, 0:ny])) +
-        (c11 * (Uy[1:nx, 1:ny + 1] - Uy[1:nx, 0:ny]))
+    T3[1:nx, 0:nz] = T3[1:nx, 0:nz] - dtx * (
+        (c13 * (Ux[1:nx, 0:nz] - Ux[0:nx - 1, 0:nz])) +
+        (c11 * (Uz[1:nx, 1:nz + 1] - Uz[1:nx, 0:nz]))
     )
-    T5[0:nx, 1:ny] = T5[0:nx, 1:ny] - dtx * c55 * (
-        Ux[0:nx, 1:ny] - Ux[0:nx, 0:ny - 1] +
-        Uy[1:nx + 1, 1:ny] - Uy[0:nx, 1:ny]
+    T5[0:nx, 1:nz] = T5[0:nx, 1:nz] - dtx * c55 * (
+        Ux[0:nx, 1:nz] - Ux[0:nx, 0:nz - 1] +
+        Uz[1:nx + 1, 1:nz] - Uz[0:nx, 1:nz]
     )
 
     # (4) 自由境界（きず）適用
@@ -236,27 +236,27 @@ for t in range(int(t_max)):
 
     # (5) 音源
     if t < int(len(wave4)):
-        T1[0, sy_l:sy_r] = wave4[t]
+        T1[0, sz_l:sz_r] = wave4[t]
     else:
-        Uy[0, sy_l:sy_r] = 0
-        Ux[0, sy_l:sy_r] = 0
-        T1[0, 0:ny] = 0
-        T5[0, 0:ny] = 0
+        Uz[0, sz_l:sz_r] = 0
+        Ux[0, sz_l:sz_r] = 0
+        T1[0, 0:nz] = 0
+        T5[0, 0:nz] = 0
 
     # (6) 粒子速度更新
-    Ux[0:nx, 0:ny] = cp.where(
-        Ux_free_count[0:nx, 0:ny] < 4,
-        Ux[0:nx, 0:ny] - (4 / rho / (4 - Ux_free_count[0:nx, 0:ny])) * dtx * (
-            T1[1:nx + 1, 0:ny] - T1[0:nx, 0:ny] +
-            T5[0:nx, 1:ny + 1] - T5[0:nx, 0:ny]
+    Ux[0:nx, 0:nz] = cp.where(
+        Ux_free_count[0:nx, 0:nz] < 4,
+        Ux[0:nx, 0:nz] - (4 / rho / (4 - Ux_free_count[0:nx, 0:nz])) * dtx * (
+            T1[1:nx + 1, 0:nz] - T1[0:nx, 0:nz] +
+            T5[0:nx, 1:nz + 1] - T5[0:nx, 0:nz]
         ),
         0
     )
-    Uy[1:nx, 1:ny] = cp.where(
-        Uy_free_count[1:nx, 1:ny] < 4,
-        Uy[1:nx, 1:ny] - (4 / rho / (4 - Uy_free_count[1:nx, 1:ny])) * dty * (
-            T3[1:nx, 1:ny] - T3[1:nx, 0:ny - 1] +
-            T5[1:nx, 1:ny] - T5[0:nx - 1, 1:ny]
+    Uz[1:nx, 1:nz] = cp.where(
+        Uz_free_count[1:nx, 1:nz] < 4,
+        Uz[1:nx, 1:nz] - (4 / rho / (4 - Uz_free_count[1:nx, 1:nz])) * dtz * (
+            T3[1:nx, 1:nz] - T3[1:nx, 0:nz - 1] +
+            T5[1:nx, 1:nz] - T5[0:nx - 1, 1:nz]
         ),
         0
     )
@@ -265,7 +265,7 @@ for t in range(int(t_max)):
 
     # (7) 記録
     if t > 0:
-        wave[t] = cp.mean(T1[1, sy_l:sy_r])
+        wave[t] = cp.mean(T1[1, sz_l:sz_r])
 
 wave = cp.asnumpy(wave)
 end_time = time.time()

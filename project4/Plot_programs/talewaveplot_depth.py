@@ -14,7 +14,7 @@ from tkinter import filedialog
 fft_N = 2 ** 14
 
 x_length = 0.02       # [m]
-y_length = 0.04       # [m]
+z_length = 0.04       # [m]
 mesh_length = 1.0e-5  # [m]
 
 rho = 7840

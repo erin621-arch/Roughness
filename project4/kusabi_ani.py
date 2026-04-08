@@ -27,7 +27,7 @@ step_size = 1
 save_interval = 10        # 何ステップごとに1フレーム保存するか
 global_downsample = 6     # 全体図の間引き率
 
-# ★拡大表示の設定 
+# ★拡大表示の設定
 zoom_width_mm = 3.0
 zoom_height_mm = 0.5
 
@@ -52,14 +52,14 @@ def make_base_name_kusabi(f_pitch_m: float, f_depth_m: float, step: int) -> str:
 
 # ---------------- 基本パラメータ ----------------
 x_length = 0.02   # [m]
-y_length = 0.04   # [m]
+z_length = 0.04   # [m]
 mesh_length = 1.0e-5  # メッシュサイズ [m]
 
 nx = int(x_length / mesh_length)
-ny = int(y_length / mesh_length)
+nz = int(z_length / mesh_length)
 
 dx = x_length / nx
-dy = y_length / ny
+dz = z_length / nz
 
 rho = 7840
 E = 206 * 1e9
@@ -77,110 +77,98 @@ T = 1 / f
 n = T / dt
 
 # ---------------- 拡大領域ROI（Zoom） ----------------
-roi_w_idx = int((zoom_width_mm * 1e-3) / dy)
-y_center = ny // 2
-y_start = max(0, y_center - roi_w_idx // 2)
-y_end = min(ny, y_center + roi_w_idx // 2)
+roi_w_idx = int((zoom_width_mm * 1e-3) / dz)
+z_center = nz // 2
+z_start = max(0, z_center - roi_w_idx // 2)
+z_end = min(nz, z_center + roi_w_idx // 2)
 
 roi_h_idx = int((zoom_height_mm * 1e-3) / dx)
 x_start = max(0, nx - roi_h_idx)
 x_end = nx
 
-print(f"ROI Indices: X[{x_start}:{x_end}], Y[{y_start}:{y_end}]")
+print(f"ROI Indices: X[{x_start}:{x_end}], Z[{z_start}:{z_end}]")
 
 # imshow extent（mm）
-extent_global = [0, y_length * 1000, x_length * 1000, 0]
-zoom_z_min = y_start * dy * 1000
-zoom_z_max = y_end * dy * 1000
+extent_global = [0, z_length * 1000, x_length * 1000, 0]
+zoom_z_min = z_start * dz * 1000
+zoom_z_max = z_end * dz * 1000
 zoom_x_min = x_start * dx * 1000
 zoom_x_max = x_end * dx * 1000
 extent_zoom = [zoom_z_min, zoom_z_max, zoom_x_max, zoom_x_min]
 
 
 # ---------------- くさび形マスク生成 ----------------
-def isfree_kusabi(nx, ny, f_pitch, f_depth, mesh_length, step_size):
+def isfree_kusabi(nx, nz, f_pitch, f_depth, mesh_length, step_size):
     # 1:固体 / 0:空洞
-    T13_isfree = np.ones((nx + 1, ny))
-    T5_isfree  = np.ones((nx, ny + 1))
+    T13_isfree = np.ones((nx + 1, nz))
+    T5_isfree  = np.ones((nx, nz + 1))
 
     mn_p = int(round(f_pitch / mesh_length))
     mn_d = int(round(f_depth / mesh_length))
 
     # 外枠
-    T13_isfree[0, 0:ny]  = 0
-    T13_isfree[nx, 0:ny] = 0
+    T13_isfree[0, 0:nz]  = 0
+    T13_isfree[nx, 0:nz] = 0
     T5_isfree[0:nx, 0]   = 0
-    T5_isfree[0:nx, ny]  = 0
+    T5_isfree[0:nx, nz]  = 0
 
-    num_f = int(np.ceil(ny / mn_p))
+    num_f = int(np.ceil(nz / mn_p))
 
     for i in range(num_f):
-        y_s = i * mn_p
-        y_e = min((i + 1) * mn_p, ny)
+        z_s = i * mn_p
+        z_e = min((i + 1) * mn_p, nz)
 
-        for y in range(y_s, y_e):
-            local_y = y - y_s
-            ideal_depth = mn_d * (1.0 - (local_y) / mn_p)
+        for z in range(z_s, z_e):
+            local_z = z - z_s
+            ideal_depth = mn_d * (1.0 - (local_z) / mn_p)
 
             current_depth = (int(ideal_depth) // step_size) * step_size
             if current_depth <= 0:
                 continue
 
             cut_top = max(0, nx - current_depth)
-            T13_isfree[cut_top: nx + 1, y] = 0
-            T5_isfree[cut_top: nx, y] = 0
-            T5_isfree[cut_top: nx, y+1] = 0
+            T13_isfree[cut_top: nx + 1, z] = 0
+            T5_isfree[cut_top: nx, z] = 0
+            T5_isfree[cut_top: nx, z+1] = 0
 
     return T13_isfree, T5_isfree
 
 
 # ---------------- 自由境界近傍の設定 ----------------
 def around_free(T13_isfree, T5_isfree):
-    Ux_free_count = np.zeros((nx, ny), dtype=float)
-    Uy_free_count = np.zeros((nx + 1, ny + 1), dtype=float)
+    # =================================
+    # Ux の処理は元のまま変更なし
+    # =================================
+    Ux_free_count = np.zeros((nx, nz), dtype=float)
+    Uz_free_count = np.zeros((nx + 1, nz + 1), dtype=float)
 
     for i in range(nx):
-        for j in range(ny):
+        for j in range(nz):
             if T13_isfree[i, j] == 0: Ux_free_count[i, j] += 1
             if T13_isfree[i + 1, j] == 0: Ux_free_count[i, j] += 1
             if T5_isfree[i, j] == 0: Ux_free_count[i, j] += 1
             if T5_isfree[i, j + 1] == 0: Ux_free_count[i, j] += 1
 
-    '''
+    # =================================
+    # Uz の処理を以下のように修正
+    # =================================
     for i in range(nx + 1):
-        for j in range(ny + 1):
-            if j == 0 or j == ny or i == 0 or i == nx:
-                Uy_free_count[i, j] += 1
-            elif 0 < i < nx and 0 < j < ny:
-                if T13_isfree[i, j - 1] == 0: Uy_free_count[i, j] += 1
-                if T13_isfree[i, j] == 0:     Uy_free_count[i, j] += 1
-                if T5_isfree[i - 1, j] == 0:  Uy_free_count[i, j] += 1
-                if T5_isfree[i, j] == 0:      Uy_free_count[i, j] += 1
-    '''
-    
-    # Uz 周囲カウント
-    for i in range(nx + 1):
-        for j in range(ny + 1):
-            # 変更点1: i == nx をこの除外条件から消す
-            if j == 0 or j == ny or i == 0:
-                Uy_free_count[i, j] += 1  # 元のロジックに従い加算（完全に消すなら +=4 推奨）
+        for j in range(nz + 1):
+            # 1. 境界の基本カウント (元の外枠条件を維持)
+            if j == 0 or j == nz or i == 0 or i == nx:
+                Uz_free_count[i, j] += 1
+            
+            # 2. elif を外し、配列範囲内にある周囲のノードの空洞をカウントする
+            if j > 0 and i < nx + 1:
+                if T13_isfree[i, j - 1] == 0: Uz_free_count[i, j] += 1
+            if j < nz and i < nx + 1:
+                if T13_isfree[i, j] == 0:     Uz_free_count[i, j] += 1
+            if i > 0 and j < nz + 1:
+                if T5_isfree[i - 1, j] == 0:  Uz_free_count[i, j] += 1
+            if i < nx and j < nz + 1:
+                if T5_isfree[i, j] == 0:      Uz_free_count[i, j] += 1
 
-            # 変更点2: i <= nx (底面を含む) まで範囲を広げる
-            elif 0 < i <= nx and 0 < j < ny:
-                if T13_isfree[i, j - 1] == 0: Uy_free_count[i, j] += 1
-                if T13_isfree[i, j] == 0:     Uy_free_count[i, j] += 1
-                if T5_isfree[i - 1, j] == 0:  Uy_free_count[i, j] += 1
-                
-                # 変更点3: 下側の判定 (T5)
-                if i < nx:
-                    # 通常の内部：T5配列の中身をチェック
-                    if T5_isfree[i, j] == 0:      Uy_free_count[i, j] += 1
-                else:
-                    # i == nx (底面) の場合：
-                    # 下側は配列外（空気/Free）なので、無条件でカウントを加算
-                    Uy_free_count[i, j] += 1
-
-    return Ux_free_count, Uy_free_count
+    return Ux_free_count, Uz_free_count
 
 
 # ---------------- 入射波形 ----------------
@@ -192,10 +180,10 @@ for ms in range(len(wave4)):
     wave4[ms] = wave2 * wave3
 
 # ---------------- 計測設定 ----------------
-sy = int(ny / 2)
+sz = int(nz / 2)
 probe_d = 0.007
-sy_l = sy - int(probe_d / mesh_length / 2)
-sy_r = sy + int(probe_d / mesh_length / 2)
+sz_l = sz - int(probe_d / mesh_length / 2)
+sz_r = sz + int(probe_d / mesh_length / 2)
 
 # くさび用は少し長めに計算
 t_max = 1.3 * x_length / cl / dt
@@ -209,7 +197,7 @@ class IntegratedViewer:
     def __init__(self, root, g_t1, g_t3, z_t1, z_t3, time_step, output_dir,
                  extent_global, extent_zoom, roi_rect_mm, base_name, mask_matrix=None):
         self.root = root
-        
+
         # --- データの正規化処理 (Normalize) ---
         max_t1 = np.max(np.abs(g_t1))
         if max_t1 > 1e-12:
@@ -228,7 +216,7 @@ class IntegratedViewer:
         else:
             self.g_t3 = g_t3
             self.z_t3 = z_t3
-        
+
         self.time_step = time_step
         self.output_dir = output_dir
         self.base_name = base_name
@@ -266,7 +254,7 @@ class IntegratedViewer:
 
         # Global T1
         self.im_g1 = self.ax_g1.imshow(
-            self.g_t1[0], cmap="viridis", vmin=vmin, vmax=vmax, 
+            self.g_t1[0], cmap="viridis", vmin=vmin, vmax=vmax,
             aspect="auto", interpolation="nearest", extent=self.extent_global
         )
         self.ax_g1.set_title("Global T1")
@@ -276,7 +264,7 @@ class IntegratedViewer:
 
         # Global T3
         self.im_g3 = self.ax_g3.imshow(
-            self.g_t3[0], cmap="viridis", vmin=vmin, vmax=vmax, 
+            self.g_t3[0], cmap="viridis", vmin=vmin, vmax=vmax,
             aspect="auto", interpolation="nearest", extent=self.extent_global
         )
         self.ax_g3.set_title("Global T3")
@@ -285,7 +273,7 @@ class IntegratedViewer:
 
         # Zoom T1
         self.im_z1 = self.ax_z1.imshow(
-            self.z_t1[0], cmap="RdBu_r", vmin=vmin, vmax=vmax, 
+            self.z_t1[0], cmap="RdBu_r", vmin=vmin, vmax=vmax,
             aspect="auto", interpolation="bilinear", extent=self.extent_zoom
         )
         self.ax_z1.set_title("Zoom T1")
@@ -294,14 +282,14 @@ class IntegratedViewer:
 
         # Zoom T3
         self.im_z3 = self.ax_z3.imshow(
-            self.z_t3[0], cmap="RdBu_r", vmin=vmin, vmax=vmax, 
+            self.z_t3[0], cmap="RdBu_r", vmin=vmin, vmax=vmax,
             aspect="auto", interpolation="bilinear", extent=self.extent_zoom
         )
         self.ax_z3.set_title("Zoom T3")
         self.ax_z3.set_xlabel("Width Z (mm)")
         self.draw_shape_outline(self.ax_z3, is_zoom=True) # ★輪郭線描画
 
-        self.fig.colorbar(self.im_z3, ax=[self.ax_g1, self.ax_g3, self.ax_z1, self.ax_z3], 
+        self.fig.colorbar(self.im_z3, ax=[self.ax_g1, self.ax_g3, self.ax_z1, self.ax_z3],
                           shrink=0.9, aspect=30, label="(Pa)")
 
         self.canvas = FigureCanvasTkAgg(self.fig, master=graph_frame)
@@ -326,11 +314,11 @@ class IntegratedViewer:
         self.btn_play = ttk.Button(btn_box, text="Play >", command=self.toggle_play)
         self.btn_play.pack(side=tk.LEFT, padx=10)
         ttk.Button(btn_box, text="Next >", command=self.step_forward).pack(side=tk.LEFT, padx=5)
-        
+
         ttk.Label(btn_box, text="Speed:").pack(side=tk.LEFT, padx=(20, 5))
         self.speed_var = tk.DoubleVar(value=30.0)
         ttk.Scale(btn_box, from_=1, to=60, variable=self.speed_var, orient=tk.HORIZONTAL, length=120).pack(side=tk.LEFT)
-        
+
         # --- 保存ボタン群 ---
         ttk.Button(btn_box, text="Save MP4", command=self.save_mp4).pack(side=tk.LEFT, padx=(20, 5))
         ttk.Button(btn_box, text="Save Data (.npz)", command=self.save_data).pack(side=tk.LEFT, padx=5)
@@ -348,8 +336,7 @@ class IntegratedViewer:
         # --- 1. 描画するデータの準備 ---
         if is_zoom:
             # 拡大領域
-            # 配列のスライス
-            mask = self.mask_matrix[x_start:x_end, y_start:y_end]
+            mask = self.mask_matrix[x_start:x_end, z_start:z_end]
             extent = self.extent_zoom
         else:
             # 全体表示用
@@ -363,15 +350,15 @@ class IntegratedViewer:
         # --- 2. 座標計算の準備 ---
         # extent = [z_min, z_max, x_max, x_min] (origin='upper'の場合、y軸は上から下へ)
         z_min, z_max, x_bot, x_top = extent
-        
+
         rows, cols = mask.shape
-        
+
         # 1ピクセルあたりのサイズ
-        dz = (z_max - z_min) / cols  # 横方向
-        dx = (x_bot - x_top) / rows  # 縦方向
+        dz_px = (z_max - z_min) / cols  # 横方向
+        dx_px = (x_bot - x_top) / rows  # 縦方向
 
         # --- 3. 境界線の検出と描画 ---
-        
+
         # 線の色と太さ
         line_color = 'black'
         line_width = 1.0 if is_zoom else 0.5
@@ -380,28 +367,28 @@ class IntegratedViewer:
         # 横方向に隣り合う値の差分をとる
         diff_h = np.diff(mask, axis=1)
         r_idx, c_idx = np.where(diff_h != 0)
-        
+
         if len(r_idx) > 0:
             # x座標 (横軸)
-            x_pos = z_min + (c_idx + 1) * dz
+            x_pos = z_min + (c_idx + 1) * dz_px
             # y座標 (縦軸)
-            y_min = x_top + r_idx * dx
-            y_max = x_top + (r_idx + 1) * dx
-            
+            y_min = x_top + r_idx * dx_px
+            y_max = x_top + (r_idx + 1) * dx_px
+
             ax.vlines(x_pos, y_min, y_max, colors=line_color, linewidths=line_width)
 
         # --- 横線 (Horizontal Lines) の描画 ---
         # 縦方向に隣り合う値の差分をとる
         diff_v = np.diff(mask, axis=0)
         r_idx, c_idx = np.where(diff_v != 0)
-        
+
         if len(r_idx) > 0:
             # y座標 (縦軸)
-            y_pos = x_top + (r_idx + 1) * dx
+            y_pos = x_top + (r_idx + 1) * dx_px
             # x座標 (横軸)
-            x_min_line = z_min + c_idx * dz
-            x_max_line = z_min + (c_idx + 1) * dz
-            
+            x_min_line = z_min + c_idx * dz_px
+            x_max_line = z_min + (c_idx + 1) * dz_px
+
             ax.hlines(y_pos, x_min_line, x_max_line, colors=line_color, linewidths=line_width)
 
     def add_roi_rect(self, ax):
@@ -490,9 +477,9 @@ class IntegratedViewer:
     # ★変更: mask_matrix も保存
     def save_data(self):
         if self.play_running: self.toggle_play()
-        
+
         filename = unique_path(os.path.join(self.output_dir, f"{self.base_name}_data.npz"))
-        
+
         try:
             print("Saving data... please wait.")
             np.savez_compressed(
@@ -530,23 +517,23 @@ def main():
     os.makedirs(output_dir, exist_ok=True)
 
     # 配列確保
-    T1 = cp.zeros((nx + 1, ny), dtype=cp.float32)
-    T3 = cp.zeros((nx + 1, ny), dtype=cp.float32)
-    T5 = cp.zeros((nx, ny + 1), dtype=cp.float32)
-    Ux = cp.zeros((nx, ny), dtype=cp.float32)
-    Uy = cp.zeros((nx + 1, ny + 1), dtype=cp.float32)
+    T1 = cp.zeros((nx + 1, nz), dtype=cp.float32)
+    T3 = cp.zeros((nx + 1, nz), dtype=cp.float32)
+    T5 = cp.zeros((nx, nz + 1), dtype=cp.float32)
+    Ux = cp.zeros((nx, nz), dtype=cp.float32)
+    Uz = cp.zeros((nx + 1, nz + 1), dtype=cp.float32)
 
     dtx = dt / dx
-    dty = dt / dy
+    dtz = dt / dz
 
     # マスク生成
-    T13_isfree_np, T5_isfree_np = isfree_kusabi(nx, ny, f_pitch, f_depth, mesh_length, step_size)
-    Ux_free_count_np, Uy_free_count_np = around_free(T13_isfree_np, T5_isfree_np)
+    T13_isfree_np, T5_isfree_np = isfree_kusabi(nx, nz, f_pitch, f_depth, mesh_length, step_size)
+    Ux_free_count_np, Uz_free_count_np = around_free(T13_isfree_np, T5_isfree_np)
 
     T13_isfree = cp.asarray(T13_isfree_np)
     T5_isfree = cp.asarray(T5_isfree_np)
     Ux_free_count = cp.asarray(Ux_free_count_np)
-    Uy_free_count = cp.asarray(Uy_free_count_np)
+    Uz_free_count = cp.asarray(Uz_free_count_np)
 
     # フレーム保存用リスト
     g_frames_t1 = []
@@ -562,20 +549,20 @@ def main():
             print(f"{t}/{int(t_max)} ({t / t_max:.1%})")
 
         # 境界条件 (反射壁)
-        T5[0:nx, 0] = 0; T5[0:nx, ny] = 0
-        T3[0, 0:ny] = 0; T3[nx, 0:ny] = 0
-        T1[nx, 0:ny] = 0
+        T5[0:nx, 0] = 0; T5[0:nx, nz] = 0
+        T3[0, 0:nz] = 0; T3[nx, 0:nz] = 0
+        T1[nx, 0:nz] = 0
         T1[0, 0] = 0; T3[0, 0] = 0; T5[0, 0] = 0
 
-        # Uy境界 (Kusabi特有の処理)
-        Uy[1:nx, 0]  -= (4 / rho) * dtx * T3[1:nx, 0]
-        Uy[1:nx, ny] -= (4 / rho) * dtx * (-T3[1:nx, ny - 1])
-        Uy[nx, 1:ny] -= (4 / rho) * dtx * (-T5[nx - 1, 1:ny])
+        # Uz境界 (Kusabi特有の処理)
+        Uz[1:nx, 0]  -= (4 / rho) * dtx * T3[1:nx, 0]
+        Uz[1:nx, nz] -= (4 / rho) * dtx * (-T3[1:nx, nz - 1])
+        Uz[nx, 1:nz] -= (4 / rho) * dtx * (-T5[nx - 1, 1:nz])
 
         # 応力更新
-        T1[1:nx, :] -= dtx * (c11 * (Ux[1:nx, :] - Ux[0:nx-1, :]) + c13 * (Uy[1:nx, 1:] - Uy[1:nx, :-1]))
-        T3[1:nx, :] -= dtx * (c13 * (Ux[1:nx, :] - Ux[0:nx-1, :]) + c11 * (Uy[1:nx, 1:] - Uy[1:nx, :-1]))
-        T5[:, 1:ny] -= dtx * c55 * (Ux[:, 1:] - Ux[:, :-1] + Uy[1:, 1:ny] - Uy[:-1, 1:ny])
+        T1[1:nx, :] -= dtx * (c11 * (Ux[1:nx, :] - Ux[0:nx-1, :]) + c13 * (Uz[1:nx, 1:] - Uz[1:nx, :-1]))
+        T3[1:nx, :] -= dtx * (c13 * (Ux[1:nx, :] - Ux[0:nx-1, :]) + c11 * (Uz[1:nx, 1:] - Uz[1:nx, :-1]))
+        T5[:, 1:nz] -= dtx * c55 * (Ux[:, 1:] - Ux[:, :-1] + Uz[1:, 1:nz] - Uz[:-1, 1:nz])
 
         # くさび内部の応力=0
         T1[T13_isfree == 0] = 0.0
@@ -584,25 +571,25 @@ def main():
 
         # 音源
         if t < int(len(wave4)):
-            T1[0, sy_l:sy_r] = wave4[t]
+            T1[0, sz_l:sz_r] = wave4[t]
         else:
-            Uy[0, sy_l:sy_r] = 0
-            Ux[0, sy_l:sy_r] = 0
-            T1[0, 0:ny] = 0
-            T5[0, 0:ny] = 0
+            Uz[0, sz_l:sz_r] = 0
+            Ux[0, sz_l:sz_r] = 0
+            T1[0, 0:nz] = 0
+            T5[0, 0:nz] = 0
 
         # 速度更新
-        Ux[0:nx, 0:ny] = cp.where(
+        Ux[0:nx, 0:nz] = cp.where(
             Ux_free_count < 4,
             Ux - (4 / rho / (4 - Ux_free_count)) * dtx * (
-                T1[1:nx+1, :] - T1[0:nx, :] + T5[:, 1:ny+1] - T5[:, 0:ny]
+                T1[1:nx+1, :] - T1[0:nx, :] + T5[:, 1:nz+1] - T5[:, 0:nz]
             ),
             0
         )
-        Uy[1:nx, 1:ny] = cp.where(
-            Uy_free_count[1:nx, 1:ny] < 4,
-            Uy[1:nx, 1:ny] - (4 / rho / (4 - Uy_free_count[1:nx, 1:ny])) * dty * (
-                T3[1:nx, 1:ny] - T3[1:nx, :-1] + T5[1:nx, 1:ny] - T5[:-1, 1:ny]
+        Uz[1:nx, 1:nz] = cp.where(
+            Uz_free_count[1:nx, 1:nz] < 4,
+            Uz[1:nx, 1:nz] - (4 / rho / (4 - Uz_free_count[1:nx, 1:nz])) * dtz * (
+                T3[1:nx, 1:nz] - T3[1:nx, :-1] + T5[1:nx, 1:nz] - T5[:-1, 1:nz]
             ),
             0
         )
@@ -612,14 +599,14 @@ def main():
             # T1
             full1 = cp.asnumpy(T1[0:nx, :])
             g1 = full1[::global_downsample, ::global_downsample].astype(np.float32, copy=False)
-            z1 = full1[x_start:x_end, y_start:y_end].astype(np.float32, copy=False)
+            z1 = full1[x_start:x_end, z_start:z_end].astype(np.float32, copy=False)
             g_frames_t1.append(g1)
             z_frames_t1.append(z1)
 
             # T3
             full3 = cp.asnumpy(T3[0:nx, :])
             g3 = full3[::global_downsample, ::global_downsample].astype(np.float32, copy=False)
-            z3 = full3[x_start:x_end, y_start:y_end].astype(np.float32, copy=False)
+            z3 = full3[x_start:x_end, z_start:z_end].astype(np.float32, copy=False)
             g_frames_t3.append(g3)
             z_frames_t3.append(z3)
 

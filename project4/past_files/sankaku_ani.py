@@ -16,9 +16,10 @@ from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
 output_dir = r"C:/Users/cs16/Roughness/project4/tmp_output"  # 研究室PC
 # output_dir = r"C:/Users/hisay/OneDrive/ドキュメント/test_folder/tmp_output"   # 自宅PC
 
-# ★くさび形 のパラメータ
-f_pitch = 1.25e-3   # ピッチ p [m]
-f_depth = 0.20e-3   # 深さ d [m]
+# ★三角きずのパラメータ
+f_width = 0.25e-3    # 幅 w [m]
+f_pitch = 1.25e-3    # ピッチ p [m]
+f_depth = 0.20e-3    # 深さ d [m]
 
 # ★階段の高さ（メッシュ数）
 step_size = 1
@@ -26,6 +27,10 @@ step_size = 1
 # ★アニメーション保存用
 save_interval = 10        # 何ステップごとに1フレーム保存するか
 global_downsample = 6     # 全体図の間引き率
+
+# ★拡大表示の設定
+zoom_width_mm = 3.0
+zoom_height_mm = 0.5
 
 # ===================================================
 
@@ -41,21 +46,22 @@ def unique_path(path: str) -> str:
             return cand
         k += 1
 
-def make_base_name_kusabi(f_pitch_m: float, f_depth_m: float, step: int) -> str:
+def make_base_name_sankaku(f_pitch_m: float, f_depth_m: float, f_width_m: float, step: int) -> str:
     pitch_code = int(round(f_pitch_m * 1e5))
     depth_code = int(round(f_depth_m * 1e5))
-    return f"kusabi_GlobalT1_pitch{pitch_code}_depth{depth_code}_step{int(step)}"
+    width_code = int(round(f_width_m * 1e5))
+    return f"sankaku_T1T3_pitch{pitch_code}_depth{depth_code}_width{width_code}_step{int(step)}"
 
 # ---------------- 基本パラメータ ----------------
 x_length = 0.02   # [m]
-y_length = 0.04   # [m]
+z_length = 0.04   # [m]
 mesh_length = 1.0e-5  # メッシュサイズ [m]
 
 nx = int(x_length / mesh_length)
-ny = int(y_length / mesh_length)
+nz = int(z_length / mesh_length)
 
 dx = x_length / nx
-dy = y_length / ny
+dz = z_length / nz
 
 rho = 7840
 E = 206 * 1e9
@@ -72,73 +78,116 @@ f = 4.7e6  # 周波数
 T = 1 / f
 n = T / dt
 
+# ---------------- 拡大領域ROI（Zoom） ----------------
+roi_w_idx = int((zoom_width_mm * 1e-3) / dz)
+z_center = nz // 2
+z_start = max(0, z_center - roi_w_idx // 2)
+z_end = min(nz, z_center + roi_w_idx // 2)
+
+roi_h_idx = int((zoom_height_mm * 1e-3) / dx)
+x_start = max(0, nx - roi_h_idx)
+x_end = nx
+
+print(f"ROI Indices: X[{x_start}:{x_end}], Z[{z_start}:{z_end}]")
+
 # imshow extent（mm）
-extent_global = [0, y_length * 1000, x_length * 1000, 0]
+extent_global = [0, z_length * 1000, x_length * 1000, 0]
+zoom_z_min = z_start * dz * 1000
+zoom_z_max = z_end * dz * 1000
+zoom_x_min = x_start * dx * 1000
+zoom_x_max = x_end * dx * 1000
+extent_zoom = [zoom_z_min, zoom_z_max, zoom_x_max, zoom_x_min]
 
-# ---------------- くさび形マスク生成 ----------------
-def isfree_kusabi(nx, ny, f_pitch, f_depth, mesh_length, step_size):
-    # 1:固体 / 0:空洞
-    T13_isfree = np.ones((nx + 1, ny))
-    T5_isfree  = np.ones((nx, ny + 1))
 
-    mn_p = int(round(f_pitch / mesh_length))
+# ---------------- 三角きず生成関数（高さ可変・対称化版） ----------------
+def isfree_symmetric(nx, nz, f_width, f_pitch, f_depth, mesh_length, step_size):
+    # 1:通常 / 0:自由境界（ゼロにする領域）
+    T13_isfree = np.ones((nx + 1, nz))
+    T5_isfree  = np.ones((nx, nz + 1))
+
+    # --- 1. 幅の決定（対称性のため奇数に固定） ---
+    mn_w = int(round(f_width / mesh_length))
+    if mn_w % 2 == 0:
+        mn_w -= 1  # 偶数なら1引いて奇数にする
+
+    # --- 2. ピッチと隙間の計算 ---
+    mn_p_val = max(1, int(round(f_pitch / mesh_length)))
+    mn_nf = max(0, mn_p_val - 2 * mn_w)
+    mn_period = mn_w + mn_nf
+
+    # 外枠の境界条件設定
+    T13_isfree[0, 0:nz]  = 0
+    T13_isfree[nx, 0:nz] = 0
+    T5_isfree[0:nx, 0]   = 0
+    T5_isfree[0:nx, nz]  = 0
+
+    # きずの数
+    num_f = int(np.ceil(nz / mn_period))
+
+    # --- 3. 深さのメッシュ数 ---
     mn_d = int(round(f_depth / mesh_length))
 
-    # 外枠
-    T13_isfree[0, 0:ny]  = 0
-    T13_isfree[nx, 0:ny] = 0
-    T5_isfree[0:nx, 0]   = 0
-    T5_isfree[0:nx, ny]  = 0
-
-    num_f = int(np.ceil(ny / mn_p))
-
     for i in range(num_f):
-        y_s = i * mn_p
-        y_e = min((i + 1) * mn_p, ny)
+        z_s = i * mn_period
+        if z_s >= nz: break
 
-        for y in range(y_s, y_e):
-            local_y = y - y_s
-            ideal_depth = mn_d * (1.0 - (local_y) / mn_p)
+        z_e = min(z_s + mn_w, nz)
+        z_c = (z_s + z_e) // 2
 
-            current_depth = (int(ideal_depth) // step_size) * step_size
-            if current_depth <= 0:
-                continue
+        for d in range(mn_d):
+            xi = (nx - 1) - d
+            if xi < 0: break
 
-            cut_top = max(0, nx - current_depth)
-            T13_isfree[cut_top: nx + 1, y] = 0
-            T5_isfree[cut_top: nx, y] = 0
-            T5_isfree[cut_top: nx, y+1] = 0
+            # 階段状になった深さ(d_step)を使って幅を計算
+            d_step = (d // step_size) * step_size
+
+            raw_w = mn_w * (1.0 - (d_step) / mn_d)
+            width_at_d = int(round(raw_w))
+
+            # 強制的に奇数にする（左右対称にするため）
+            if width_at_d % 2 == 0:
+                width_at_d -= 1
+
+            # 最低幅は1とする
+            if width_at_d < 1:
+                width_at_d = 1
+
+            half = width_at_d // 2
+            zl = max(z_c - half, 0)
+            zr = min(z_c + half + 1, nz)
+
+            if zl < zr:
+                T5_isfree[xi, zl:zr] = 0
+                if xi < nx + 1:
+                    T13_isfree[xi, zl:zr] = 0
 
     return T13_isfree, T5_isfree
 
+
 # ---------------- 自由境界近傍の設定 ----------------
 def around_free(T13_isfree, T5_isfree):
-    Ux_free_count = np.zeros((nx, ny), dtype=float)
-    Uy_free_count = np.zeros((nx + 1, ny + 1), dtype=float)
+    Ux_free_count = np.zeros((nx, nz), dtype=float)
+    Uz_free_count = np.zeros((nx + 1, nz + 1), dtype=float)
 
     for i in range(nx):
-        for j in range(ny):
+        for j in range(nz):
             if T13_isfree[i, j] == 0: Ux_free_count[i, j] += 1
             if T13_isfree[i + 1, j] == 0: Ux_free_count[i, j] += 1
             if T5_isfree[i, j] == 0: Ux_free_count[i, j] += 1
             if T5_isfree[i, j + 1] == 0: Ux_free_count[i, j] += 1
-    
-    # Uz 周囲カウント
-    for i in range(nx + 1):
-        for j in range(ny + 1):
-            if j == 0 or j == ny or i == 0:
-                Uy_free_count[i, j] += 1
-            elif 0 < i <= nx and 0 < j < ny:
-                if T13_isfree[i, j - 1] == 0: Uy_free_count[i, j] += 1
-                if T13_isfree[i, j] == 0:     Uy_free_count[i, j] += 1
-                if T5_isfree[i - 1, j] == 0:  Uy_free_count[i, j] += 1
-                
-                if i < nx:
-                    if T5_isfree[i, j] == 0:  Uy_free_count[i, j] += 1
-                else:
-                    Uy_free_count[i, j] += 1
 
-    return Ux_free_count, Uy_free_count
+    for i in range(nx + 1):
+        for j in range(nz + 1):
+            if j == 0 or j == nz or i == 0 or i == nx:
+                Uz_free_count[i, j] += 1
+            elif 0 < i < nx and 0 < j < nz:
+                if T13_isfree[i, j - 1] == 0: Uz_free_count[i, j] += 1
+                if T13_isfree[i, j] == 0:     Uz_free_count[i, j] += 1
+                if T5_isfree[i - 1, j] == 0:  Uz_free_count[i, j] += 1
+                if T5_isfree[i, j] == 0:      Uz_free_count[i, j] += 1
+
+    return Ux_free_count, Uz_free_count
+
 
 # ---------------- 入射波形 ----------------
 wn = 2.5
@@ -149,35 +198,47 @@ for ms in range(len(wave4)):
     wave4[ms] = wave2 * wave3
 
 # ---------------- 計測設定 ----------------
-sy = int(ny / 2)
+sz = int(nz / 2)
 probe_d = 0.007
-sy_l = sy - int(probe_d / mesh_length / 2)
-sy_r = sy + int(probe_d / mesh_length / 2)
+sz_l = sz - int(probe_d / mesh_length / 2)
+sz_r = sz + int(probe_d / mesh_length / 2)
 
-t_max = 2.5 * x_length / cl / dt
+t_max = 1.5 * x_length / cl / dt
 
 
 # =======================================================================
-#               Viewer Class (Single View for Global T1)
+#               Viewer Class
 # =======================================================================
-class ViewerSingle:
-    def __init__(self, root, g_t1, time_step, output_dir,
-                 extent_global, probe_rect_mm, base_name, mask_matrix=None):
+class IntegratedViewer:
+    def __init__(self, root, g_t1, g_t3, z_t1, z_t3, time_step, output_dir,
+                 extent_global, extent_zoom, roi_rect_mm, base_name, mask_matrix=None):
         self.root = root
-        
+
         # --- データの正規化処理 ---
         max_t1 = np.max(np.abs(g_t1))
         if max_t1 > 1e-12:
             print(f"Normalizing T1 by max value: {max_t1:.4e}")
             self.g_t1 = g_t1 / max_t1
+            self.z_t1 = z_t1 / max_t1
         else:
             self.g_t1 = g_t1
-        
+            self.z_t1 = z_t1
+
+        max_t3 = np.max(np.abs(g_t3))
+        if max_t3 > 1e-12:
+            print(f"Normalizing T3 by max value: {max_t3:.4e}")
+            self.g_t3 = g_t3 / max_t3
+            self.z_t3 = z_t3 / max_t3
+        else:
+            self.g_t3 = g_t3
+            self.z_t3 = z_t3
+
         self.time_step = time_step
         self.output_dir = output_dir
         self.base_name = base_name
         self.extent_global = extent_global
-        self.probe_rect_mm = probe_rect_mm
+        self.extent_zoom = extent_zoom
+        self.roi_rect_mm = roi_rect_mm
         self.mask_matrix = mask_matrix
 
         os.makedirs(self.output_dir, exist_ok=True)
@@ -188,8 +249,8 @@ class ViewerSingle:
         self.setup_ui()
 
     def setup_ui(self):
-        self.root.title("Kusabi Global T1 Viewer")
-        self.root.geometry("800x700")
+        self.root.title("Sankaku (Triangle) Simulation Viewer")
+        self.root.geometry("1000x800")
 
         main_frame = ttk.Frame(self.root)
         main_frame.pack(fill=tk.BOTH, expand=True, padx=5, pady=5)
@@ -197,39 +258,55 @@ class ViewerSingle:
         graph_frame = ttk.Frame(main_frame)
         graph_frame.pack(fill=tk.BOTH, expand=True)
 
-        self.fig = plt.Figure(figsize=(8, 6), dpi=100, layout="constrained")
-        self.ax = self.fig.add_subplot(111)
+        self.fig = plt.Figure(figsize=(9, 7), dpi=100, layout="constrained")
+        gs = self.fig.add_gridspec(2, 2, height_ratios=[1, 1], width_ratios=[1, 1])
+
+        self.ax_g1 = self.fig.add_subplot(gs[0, 0])
+        self.ax_g3 = self.fig.add_subplot(gs[0, 1])
+        self.ax_z1 = self.fig.add_subplot(gs[1, 0])
+        self.ax_z3 = self.fig.add_subplot(gs[1, 1])
 
         vmin, vmax = -1.0, 1.0
 
-        # Global T1 波形表示 (レイヤー1)
-        self.im = self.ax.imshow(
-            self.g_t1[0], cmap="viridis", vmin=vmin, vmax=vmax, 
-            aspect="auto", interpolation="nearest", extent=self.extent_global, zorder=1
+        # Global T1
+        self.im_g1 = self.ax_g1.imshow(
+            self.g_t1[0], cmap="viridis", vmin=vmin, vmax=vmax,
+            aspect="auto", interpolation="nearest", extent=self.extent_global
         )
-        self.ax.set_title("Global T1")
-        self.ax.set_xlabel("Width Z (mm)")
-        self.ax.set_ylabel("Depth X (mm)")
-        
-        # ★きず部分を白く塗りつぶす (レイヤー2)
-        if self.mask_matrix is not None:
-            mask = self.mask_matrix[0:nx, :]  # (nx, ny)
-            # RGBA画像を作成 (初期値0で全て透明)
-            rgba_mask = np.zeros((mask.shape[0], mask.shape[1], 4), dtype=np.float32)
-            # mask == 0 (空洞部分) のピクセルだけを 白 (不透明) に設定
-            rgba_mask[mask == 0] = [1.0, 1.0, 1.0, 1.0]
-            
-            self.ax.imshow(rgba_mask, extent=self.extent_global, aspect="auto", interpolation="nearest", zorder=2)
-            
-        # 輪郭線描画 (白抜きの境界を際立たせるための黒線 / レイヤー3)
-        self.draw_shape_outline(self.ax) 
+        self.ax_g1.set_title("Global T1")
+        self.ax_g1.set_ylabel("Depth X (mm)")
+        self.add_roi_rect(self.ax_g1)
+        self.draw_shape_outline(self.ax_g1, is_zoom=False)
 
-        # 探触子の位置を黄緑色のマークで囲う (レイヤー4)
-        pz, px, pw, ph = self.probe_rect_mm
-        probe_patch = Rectangle((pz, px), pw, ph, linewidth=3, edgecolor="lawngreen", facecolor="none", zorder=4)
-        self.ax.add_patch(probe_patch)
+        # Global T3
+        self.im_g3 = self.ax_g3.imshow(
+            self.g_t3[0], cmap="viridis", vmin=vmin, vmax=vmax,
+            aspect="auto", interpolation="nearest", extent=self.extent_global
+        )
+        self.ax_g3.set_title("Global T3")
+        self.add_roi_rect(self.ax_g3)
+        self.draw_shape_outline(self.ax_g3, is_zoom=False)
 
-        self.fig.colorbar(self.im, ax=self.ax, shrink=0.9, aspect=30, label="(Pa)")
+        # Zoom T1
+        self.im_z1 = self.ax_z1.imshow(
+            self.z_t1[0], cmap="RdBu_r", vmin=vmin, vmax=vmax,
+            aspect="auto", interpolation="bilinear", extent=self.extent_zoom
+        )
+        self.ax_z1.set_title("Zoom T1")
+        self.ax_z1.set_xlabel("Width Z (mm)"); self.ax_z1.set_ylabel("Depth X (mm)")
+        self.draw_shape_outline(self.ax_z1, is_zoom=True)
+
+        # Zoom T3
+        self.im_z3 = self.ax_z3.imshow(
+            self.z_t3[0], cmap="RdBu_r", vmin=vmin, vmax=vmax,
+            aspect="auto", interpolation="bilinear", extent=self.extent_zoom
+        )
+        self.ax_z3.set_title("Zoom T3")
+        self.ax_z3.set_xlabel("Width Z (mm)")
+        self.draw_shape_outline(self.ax_z3, is_zoom=True)
+
+        self.fig.colorbar(self.im_z3, ax=[self.ax_g1, self.ax_g3, self.ax_z1, self.ax_z3],
+                          shrink=0.9, aspect=30, label="(Pa)")
 
         self.canvas = FigureCanvasTkAgg(self.fig, master=graph_frame)
         self.canvas.draw()
@@ -253,57 +330,70 @@ class ViewerSingle:
         self.btn_play = ttk.Button(btn_box, text="Play >", command=self.toggle_play)
         self.btn_play.pack(side=tk.LEFT, padx=10)
         ttk.Button(btn_box, text="Next >", command=self.step_forward).pack(side=tk.LEFT, padx=5)
-        
+
         ttk.Label(btn_box, text="Speed:").pack(side=tk.LEFT, padx=(20, 5))
         self.speed_var = tk.DoubleVar(value=30.0)
         ttk.Scale(btn_box, from_=1, to=60, variable=self.speed_var, orient=tk.HORIZONTAL, length=120).pack(side=tk.LEFT)
-        
+
         # --- 保存ボタン群 ---
         ttk.Button(btn_box, text="Save MP4", command=self.save_mp4).pack(side=tk.LEFT, padx=(20, 5))
-        ttk.Button(btn_box, text="Save Data", command=self.save_data).pack(side=tk.LEFT, padx=5)
+        ttk.Button(btn_box, text="Save Data (.npz)", command=self.save_data).pack(side=tk.LEFT, padx=5)
 
         self.root.after(500, self.toggle_play)
 
-    def draw_shape_outline(self, ax):
+    def draw_shape_outline(self, ax, is_zoom=False):
+        """中身を塗らず、ブロックの「輪郭線（境界線）」だけを描画する"""
         if self.mask_matrix is None:
             return
 
-        mask = self.mask_matrix[0:nx, :]
-        extent = self.extent_global
+        if is_zoom:
+            mask = self.mask_matrix[x_start:x_end, z_start:z_end]
+            extent = self.extent_zoom
+        else:
+            mask = self.mask_matrix[0:nx, :]
+            extent = self.extent_global
 
         if np.all(mask == 0) or np.all(mask == 1):
             return
 
         z_min, z_max, x_bot, x_top = extent
         rows, cols = mask.shape
-        
-        dz = (z_max - z_min) / cols
-        dx = (x_bot - x_top) / rows
+
+        dz_px = (z_max - z_min) / cols
+        dx_px = (x_bot - x_top) / rows
 
         line_color = 'black'
-        line_width = 0.5
+        line_width = 1.0 if is_zoom else 0.5
 
-        # 縦線
+        # 縦線の描画
         diff_h = np.diff(mask, axis=1)
         r_idx, c_idx = np.where(diff_h != 0)
         if len(r_idx) > 0:
-            x_pos = z_min + (c_idx + 1) * dz
-            y_min = x_top + r_idx * dx
-            y_max = x_top + (r_idx + 1) * dx
-            ax.vlines(x_pos, y_min, y_max, colors=line_color, linewidths=line_width, zorder=3)
+            x_pos = z_min + (c_idx + 1) * dz_px
+            y_min = x_top + r_idx * dx_px
+            y_max = x_top + (r_idx + 1) * dx_px
+            ax.vlines(x_pos, y_min, y_max, colors=line_color, linewidths=line_width)
 
-        # 横線
+        # 横線の描画
         diff_v = np.diff(mask, axis=0)
         r_idx, c_idx = np.where(diff_v != 0)
         if len(r_idx) > 0:
-            y_pos = x_top + (r_idx + 1) * dx
-            x_min_line = z_min + c_idx * dz
-            x_max_line = z_min + (c_idx + 1) * dz
-            ax.hlines(y_pos, x_min_line, x_max_line, colors=line_color, linewidths=line_width, zorder=3)
+            y_pos = x_top + (r_idx + 1) * dx_px
+            x_min_line = z_min + c_idx * dz_px
+            x_max_line = z_min + (c_idx + 1) * dz_px
+            ax.hlines(y_pos, x_min_line, x_max_line, colors=line_color, linewidths=line_width)
+
+    def add_roi_rect(self, ax):
+        rz, rx, rw, rh = self.roi_rect_mm
+        rect = Rectangle((rz, rx), rw, rh, linewidth=1.5, edgecolor="red", facecolor="none")
+        ax.add_patch(rect)
 
     def update_frame(self, frame_idx):
         frame_idx = int(np.clip(frame_idx, 0, self.n_frames - 1))
-        self.im.set_array(self.g_t1[frame_idx])
+        self.im_g1.set_array(self.g_t1[frame_idx])
+        self.im_g3.set_array(self.g_t3[frame_idx])
+        self.im_z1.set_array(self.z_t1[frame_idx])
+        self.im_z3.set_array(self.z_t3[frame_idx])
 
         current_t = frame_idx * self.time_step
         self.time_label.config(text=f"Time: {current_t*1e6:.2f} µs")
@@ -354,10 +444,13 @@ class ViewerSingle:
 
         def _update(i):
             i = int(i)
-            self.im.set_array(self.g_t1[i])
+            self.im_g1.set_array(self.g_t1[i])
+            self.im_g3.set_array(self.g_t3[i])
+            self.im_z1.set_array(self.z_t1[i])
+            self.im_z3.set_array(self.z_t3[i])
             current_t = i * self.time_step
             self.time_label.config(text=f"Time: {current_t*1e6:.2f} µs")
-            return [self.im]
+            return [self.im_g1, self.im_g3, self.im_z1, self.im_z3]
 
         ani = animation.FuncAnimation(self.fig, _update, frames=self.n_frames, interval=1000/fps, blit=False)
         try:
@@ -374,17 +467,21 @@ class ViewerSingle:
 
     def save_data(self):
         if self.play_running: self.toggle_play()
-        
+
         filename = unique_path(os.path.join(self.output_dir, f"{self.base_name}_data.npz"))
-        
+
         try:
             print("Saving data... please wait.")
             np.savez_compressed(
                 filename,
                 g_t1=self.g_t1,
+                g_t3=self.g_t3,
+                z_t1=self.z_t1,
+                z_t3=self.z_t3,
                 time_step=self.time_step,
                 extent_global=self.extent_global,
-                probe_rect_mm=self.probe_rect_mm,
+                extent_zoom=self.extent_zoom,
+                roi_rect_mm=self.roi_rect_mm,
                 base_name=self.base_name,
                 mask_matrix=self.mask_matrix
             )
@@ -394,14 +491,15 @@ class ViewerSingle:
             messagebox.showerror("Error", f"Failed to save data:\n{e}")
             traceback.print_exc()
 
+
 # =======================================================================
 #               Main Simulation
 # =======================================================================
 def main():
-    base_name = make_base_name_kusabi(f_pitch, f_depth, step_size)
+    base_name = make_base_name_sankaku(f_pitch, f_depth, f_width, step_size)
 
+    print(f"Shape: Sankaku/Triangle (Width={f_width*1000}mm, Depth={f_depth*1000}mm)")
     print(f"Pitch(p) = {f_pitch*1000} mm")
-    print(f"Depth(d) = {f_depth*1000} mm")
     print(f"Step Size = {step_size} mesh(es)")
     print(f"save_interval = {save_interval}, global_downsample = {global_downsample}")
     print(f"Output dir: {output_dir}")
@@ -410,26 +508,29 @@ def main():
     os.makedirs(output_dir, exist_ok=True)
 
     # 配列確保
-    T1 = cp.zeros((nx + 1, ny), dtype=cp.float32)
-    T3 = cp.zeros((nx + 1, ny), dtype=cp.float32)
-    T5 = cp.zeros((nx, ny + 1), dtype=cp.float32)
-    Ux = cp.zeros((nx, ny), dtype=cp.float32)
-    Uy = cp.zeros((nx + 1, ny + 1), dtype=cp.float32)
+    T1 = cp.zeros((nx + 1, nz), dtype=cp.float32)
+    T3 = cp.zeros((nx + 1, nz), dtype=cp.float32)
+    T5 = cp.zeros((nx, nz + 1), dtype=cp.float32)
+    Ux = cp.zeros((nx, nz), dtype=cp.float32)
+    Uz = cp.zeros((nx + 1, nz + 1), dtype=cp.float32)
 
     dtx = dt / dx
-    dty = dt / dy
+    dtz = dt / dz
 
-    # マスク生成
-    T13_isfree_np, T5_isfree_np = isfree_kusabi(nx, ny, f_pitch, f_depth, mesh_length, step_size)
-    Ux_free_count_np, Uy_free_count_np = around_free(T13_isfree_np, T5_isfree_np)
+    # 三角きずマスク生成
+    T13_isfree_np, T5_isfree_np = isfree_symmetric(nx, nz, f_width, f_pitch, f_depth, mesh_length, step_size)
+    Ux_free_count_np, Uz_free_count_np = around_free(T13_isfree_np, T5_isfree_np)
 
     T13_isfree = cp.asarray(T13_isfree_np)
     T5_isfree = cp.asarray(T5_isfree_np)
     Ux_free_count = cp.asarray(Ux_free_count_np)
-    Uy_free_count = cp.asarray(Uy_free_count_np)
+    Uz_free_count = cp.asarray(Uz_free_count_np)
 
-    # フレーム保存用リスト (今回はGlobal T1のみ保存)
+    # フレーム保存用リスト
     g_frames_t1 = []
+    g_frames_t3 = []
+    z_frames_t1 = []
+    z_frames_t3 = []
 
     start_time = time.time()
     print("Running Simulation...")
@@ -439,57 +540,66 @@ def main():
             print(f"{t}/{int(t_max)} ({t / t_max:.1%})")
 
         # 境界条件 (反射壁)
-        T5[0:nx, 0] = 0; T5[0:nx, ny] = 0
-        T3[0, 0:ny] = 0; T3[nx, 0:ny] = 0
-        T1[nx, 0:ny] = 0
+        T5[0:nx, 0] = 0; T5[0:nx, nz] = 0
+        T3[0, 0:nz] = 0; T3[nx, 0:nz] = 0
+        T1[nx, 0:nz] = 0
         T1[0, 0] = 0; T3[0, 0] = 0; T5[0, 0] = 0
 
-        # Uy境界
-        Uy[1:nx, 0]  -= (4 / rho) * dtx * T3[1:nx, 0]
-        Uy[1:nx, ny] -= (4 / rho) * dtx * (-T3[1:nx, ny - 1])
-        Uy[nx, 1:ny] -= (4 / rho) * dtx * (-T5[nx - 1, 1:ny])
+        # Uz境界
+        Uz[1:nx, 0]  -= (4 / rho) * dtx * T3[1:nx, 0]
+        Uz[1:nx, nz] -= (4 / rho) * dtx * (-T3[1:nx, nz - 1])
+        Uz[nx, 1:nz] -= (4 / rho) * dtx * (-T5[nx - 1, 1:nz])
 
         # 応力更新
-        T1[1:nx, :] -= dtx * (c11 * (Ux[1:nx, :] - Ux[0:nx-1, :]) + c13 * (Uy[1:nx, 1:] - Uy[1:nx, :-1]))
-        T3[1:nx, :] -= dtx * (c13 * (Ux[1:nx, :] - Ux[0:nx-1, :]) + c11 * (Uy[1:nx, 1:] - Uy[1:nx, :-1]))
-        T5[:, 1:ny] -= dtx * c55 * (Ux[:, 1:] - Ux[:, :-1] + Uy[1:, 1:ny] - Uy[:-1, 1:ny])
+        T1[1:nx, :] -= dtx * (c11 * (Ux[1:nx, :] - Ux[0:nx-1, :]) + c13 * (Uz[1:nx, 1:] - Uz[1:nx, :-1]))
+        T3[1:nx, :] -= dtx * (c13 * (Ux[1:nx, :] - Ux[0:nx-1, :]) + c11 * (Uz[1:nx, 1:] - Uz[1:nx, :-1]))
+        T5[:, 1:nz] -= dtx * c55 * (Ux[:, 1:] - Ux[:, :-1] + Uz[1:, 1:nz] - Uz[:-1, 1:nz])
 
-        # くさび内部の応力=0
+        # きず内部の応力=0
         T1[T13_isfree == 0] = 0.0
         T3[T13_isfree == 0] = 0.0
         T5[T5_isfree[0:nx, :] == 0] = 0.0
 
         # 音源
         if t < int(len(wave4)):
-            T1[0, sy_l:sy_r] = wave4[t]
+            T1[0, sz_l:sz_r] = wave4[t]
         else:
-            Uy[0, sy_l:sy_r] = 0
-            Ux[0, sy_l:sy_r] = 0
-            T1[0, 0:ny] = 0
-            T5[0, 0:ny] = 0
+            Uz[0, sz_l:sz_r] = 0
+            Ux[0, sz_l:sz_r] = 0
+            T1[0, 0:nz] = 0
+            T5[0, 0:nz] = 0
 
         # 速度更新
-        Ux[0:nx, 0:ny] = cp.where(
+        Ux[0:nx, 0:nz] = cp.where(
             Ux_free_count < 4,
             Ux - (4 / rho / (4 - Ux_free_count)) * dtx * (
-                T1[1:nx+1, :] - T1[0:nx, :] + T5[:, 1:ny+1] - T5[:, 0:ny]
+                T1[1:nx+1, :] - T1[0:nx, :] + T5[:, 1:nz+1] - T5[:, 0:nz]
             ),
             0
         )
-        Uy[1:nx, 1:ny] = cp.where(
-            Uy_free_count[1:nx, 1:ny] < 4,
-            Uy[1:nx, 1:ny] - (4 / rho / (4 - Uy_free_count[1:nx, 1:ny])) * dty * (
-                T3[1:nx, 1:ny] - T3[1:nx, :-1] + T5[1:nx, 1:ny] - T5[:-1, 1:ny]
+        Uz[1:nx, 1:nz] = cp.where(
+            Uz_free_count[1:nx, 1:nz] < 4,
+            Uz[1:nx, 1:nz] - (4 / rho / (4 - Uz_free_count[1:nx, 1:nz])) * dtz * (
+                T3[1:nx, 1:nz] - T3[1:nx, :-1] + T5[1:nx, 1:nz] - T5[:-1, 1:nz]
             ),
             0
         )
 
         # フレーム保存
         if t % save_interval == 0:
-            # T1 のみ保存してメモリを節約
+            # T1
             full1 = cp.asnumpy(T1[0:nx, :])
             g1 = full1[::global_downsample, ::global_downsample].astype(np.float32, copy=False)
+            z1 = full1[x_start:x_end, z_start:z_end].astype(np.float32, copy=False)
             g_frames_t1.append(g1)
+            z_frames_t1.append(z1)
+
+            # T3
+            full3 = cp.asnumpy(T3[0:nx, :])
+            g3 = full3[::global_downsample, ::global_downsample].astype(np.float32, copy=False)
+            z3 = full3[x_start:x_end, z_start:z_end].astype(np.float32, copy=False)
+            g_frames_t3.append(g3)
+            z_frames_t3.append(z3)
 
         if t % 1000 == 0:
             cp.cuda.Device().synchronize()
@@ -502,29 +612,35 @@ def main():
         return
 
     g_data1 = np.array(g_frames_t1)
+    g_data3 = np.array(g_frames_t3)
+    z_data1 = np.array(z_frames_t1)
+    z_data3 = np.array(z_frames_t3)
 
-    # 探触子を囲うマークの物理座標計算 [mm]
-    probe_z_min = sy_l * dy * 1000
-    probe_z_width = (sy_r - sy_l) * dy * 1000
-    probe_x_min = 0.0
-    probe_x_height = 0.5  # 深さ方向に0.5mmほどの太さで囲う
-    probe_rect_mm = (probe_z_min, probe_x_min, probe_z_width, probe_x_height)
+    roi_rect_mm = (
+        zoom_z_min,
+        zoom_x_min,
+        (zoom_z_max - zoom_z_min),
+        (zoom_x_max - zoom_x_min)
+    )
 
     try:
         root = tk.Tk()
-        _ = ViewerSingle(
+        _ = IntegratedViewer(
             root=root,
-            g_t1=g_data1,
+            g_t1=g_data1, g_t3=g_data3,
+            z_t1=z_data1, z_t3=z_data3,
             time_step=dt * save_interval,
             output_dir=output_dir,
             extent_global=extent_global,
-            probe_rect_mm=probe_rect_mm,
+            extent_zoom=extent_zoom,
+            roi_rect_mm=roi_rect_mm,
             base_name=base_name,
             mask_matrix=T13_isfree_np
         )
         root.mainloop()
     except Exception:
         traceback.print_exc()
+
 
 if __name__ == "__main__":
     main()

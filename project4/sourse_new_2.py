@@ -8,13 +8,13 @@ import os
 
 fft_N = 2 ** 14
 x_length = 0.02  # x方向の長さ m
-y_length = 0.04  # y方向の長さ m
+z_length = 0.04  # z方向の長さ m
 mesh_length = 1.0e-5  # m
 nx = int(x_length / mesh_length)  # how many mesh
-ny = int(y_length / mesh_length)
+nz = int(z_length / mesh_length)
 
 dx = x_length / nx  # mesh length m
-dy = y_length / ny  # m
+dz = z_length / nz  # m
 
 rho = 7840  # density kg/m^3
 E = 206 * 1e9  # young percentage kg/ms^2

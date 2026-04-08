@@ -72,13 +72,13 @@ smooth_sim_path = os.path.join(sim_base_dir, "Smooth", "smooth_cupy_pitch125_dep
 # ================== FDTD と同じ物性値・dt を再計算 ==================
 
 x_length = 0.02   # x方向の長さ [m]
-y_length = 0.04   # y方向の長さ [m]
+z_length = 0.04   # z方向の長さ [m]
 mesh_length = 1.0e-5  # メッシュ長 [m]
 nx = int(x_length / mesh_length)
-ny = int(y_length / mesh_length)
+nz = int(z_length / mesh_length)
 
 dx = x_length / nx
-dy = y_length / ny
+dz = z_length / nz
 
 rho = 7840
 E = 206 * 1e9
