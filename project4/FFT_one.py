@@ -471,6 +471,7 @@ if __name__ == "__main__":
     plt.title(f"Normalized Amplitude spectrum (Defect/Smooth) ({freq_min/1e6:.1f}-{freq_max/1e6:.1f} MHz)")
     plt.xlabel("Frequency [MHz]")
     plt.ylabel("Normalized Amplitude spectrum (Defect/Smooth)")
+    plt.ylim(0, 1)
     plt.legend()
     plt.grid()
     plt.tight_layout()

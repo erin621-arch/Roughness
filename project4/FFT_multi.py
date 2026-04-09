@@ -27,7 +27,7 @@ freq_max = 8.0e6  # [Hz]
 # ============================================================
 # ★ 2. 対象形状・ピッチの指定
 # ============================================================
-target_shape = "sankaku"  # "sankaku" / "kusabi" / "hanen"
+target_shape = "kusabi"  # "sankaku" / "kusabi" / "hanen"
 target_pitch = 125         # ピッチ整数コード (1.25e-3 m → 125)
 
 # ============================================================
@@ -236,6 +236,7 @@ if __name__ == "__main__":
         plt.plot(freq_band / 1e6, ratio_d, label=label)
     plt.xlabel("Frequency [MHz]")
     plt.ylabel("Amplitude ratio (defect / smooth)")
+    plt.ylim(0, 1)
     plt.title(f"FFT ratio spectrum ({freq_min/1e6:.1f}-{freq_max/1e6:.1f} MHz, multiple depths)")
     plt.grid(True)
     plt.legend(fontsize=8)

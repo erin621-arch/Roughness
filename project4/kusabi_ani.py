@@ -17,7 +17,7 @@ output_dir = r"C:/Users/cs16/Roughness/project4/tmp_output"  # 研究室PC
 # output_dir = r"C:/Users/hisay/OneDrive/ドキュメント/test_folder/tmp_output"   # 自宅PC
 
 # ★くさび形 のパラメータ
-f_pitch = 1.25e-3   # ピッチ p [m]
+f_pitch = 2.00e-3   # ピッチ p [m]
 f_depth = 0.20e-3   # 深さ d [m]
 
 # ★階段の高さ（メッシュ数）
@@ -197,7 +197,7 @@ sz_l = sz - int(probe_d / mesh_length / 2)
 sz_r = sz + int(probe_d / mesh_length / 2)
 
 # くさび用は少し長めに計算
-t_max = 1.3 * x_length / cl / dt
+t_max = 1.5 * x_length / cl / dt
 
 
 # =======================================================================
