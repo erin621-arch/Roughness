@@ -15,7 +15,7 @@ DOC_PATH = r"C:\Users\cs16\Roughness\project4"
 EXP_BASE_DIR = os.path.join(DOC_PATH, "Experiment_Data")
 SIM_BASE_DIR = os.path.join(DOC_PATH, "Simulation_Data")
 
-TARGET_SHAPES = ["Sankaku", "Kusabi", "Hanen"]
+TARGET_SHAPES = ["Sankaku", "Kusabi", "Ushape"]
 TARGET_PITCH_NAME = "125"
 TARGET_DEPTH_NAME = "20"
 STEP_LIST = [1, 2, 5, 10]

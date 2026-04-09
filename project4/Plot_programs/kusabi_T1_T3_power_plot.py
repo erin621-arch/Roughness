@@ -17,7 +17,6 @@ nz = int(round(z_length / mesh_length))
 
 # ================== 2. 関数定義 ==================
 def isfree_kusabi_viz(nx, nz, f_pitch, f_depth, mesh_length, step_size):
-    """kusabi_sim.pyのロジックに、可視化用の境界線マッピング(cut_top_map)を追加"""
     
     T13_isfree = np.ones((nx + 1, nz))
     T5_isfree  = np.ones((nx, nz + 1))

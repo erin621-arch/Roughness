@@ -66,7 +66,7 @@ def get_sim_filepath(base_root, shape, pitch, depth_val):
     shape_map = {
         "sankaku": "Sankaku",
         "kusabi":  "Kusabi",
-        "hanen":   "Hanen",
+        "ushape":   "Ushape",
         "smooth":  "Smooth",
         "kusabi2": "Kusabi" 
     }
@@ -105,7 +105,7 @@ if __name__ == "__main__":
     sim_base_dir = os.path.join(doc_path, "Simulation_Data")
 
     # --- 解析条件 ---
-    target_shape_prefix = "hanen"  # ファイル名の先頭
+    target_shape_prefix = "ushape"  # ファイル名の先頭
     target_pitch_val = 1.25
     
     # ★ 比較したい深さのリスト

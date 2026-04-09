@@ -175,7 +175,7 @@ def get_exp_folder_path(base_root, shape, pitch_int, depth_int):
     shape_map = {
         "sankaku": "Sankaku",
         "kusabi":  "Kusabi",
-        "hanen":   "Hanen"
+        "ushape":   "Ushape"
     }
     dir_shape = shape_map.get(shape.lower(), shape.capitalize())
     dir_name = f"{pitch_int}_{depth_int}"
@@ -186,7 +186,7 @@ def get_sim_folder_path(base_root, shape):
     shape_map = {
         "sankaku": "Sankaku",
         "kusabi":  "Kusabi",
-        "hanen":   "Hanen",
+        "ushape":   "Ushape",
         "smooth":  "Smooth"
     }
     dir_shape = shape_map.get(shape, shape.capitalize())
@@ -214,7 +214,7 @@ if __name__ == "__main__":
     # ============================================================
     # ★ 2. 実験データの条件選択
     # ============================================================
-    target_shape = "kusabi"  # "sankaku" / "kusabi" / "hanen"
+    target_shape = "kusabi"  # "sankaku" / "kusabi" / "ushape"
     target_pitch = 125        # ピッチ整数コード (1.25e-3 m → 125)
     target_depth = 20         # 深さ整数コード (0.20e-3 m → 20)
 

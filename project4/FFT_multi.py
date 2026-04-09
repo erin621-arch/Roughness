@@ -27,7 +27,7 @@ freq_max = 8.0e6  # [Hz]
 # ============================================================
 # ★ 2. 対象形状・ピッチの指定
 # ============================================================
-target_shape = "kusabi"  # "sankaku" / "kusabi" / "hanen"
+target_shape = "kusabi"  # "sankaku" / "kusabi" / "ushape"
 target_pitch = 125         # ピッチ整数コード (1.25e-3 m → 125)
 
 # ============================================================
@@ -58,7 +58,7 @@ target_sim_filenames = [
 
 # --- パス設定 ---
 _shape_map = {"sankaku": "Sankaku", "kusabi": "Kusabi",
-              "hanen": "Hanen", "smooth": "Smooth"}
+              "ushape": "Ushape", "smooth": "Smooth"}
 sim_shape_dir = os.path.join(
     sim_base_dir, _shape_map.get(target_shape.lower(), target_shape.capitalize())
 )

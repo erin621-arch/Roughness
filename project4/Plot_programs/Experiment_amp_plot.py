@@ -102,7 +102,7 @@ def get_exp_folder_path(base_root, shape, pitch, depth):
     if shape.lower() == "smooth":
         return os.path.join(base_root, "Smooth", "0_0")
 
-    shape_map = {"sankaku": "Sankaku", "kusabi": "Kusabi", "hanen": "Hanen"}
+    shape_map = {"sankaku": "Sankaku", "kusabi": "Kusabi", "ushape": "Ushape"}
     dir_shape = shape_map.get(shape, shape.capitalize())
     
     p_val = pitch.replace("p", "").replace(".", "")
@@ -134,7 +134,7 @@ if __name__ == "__main__":
     exp_base_dir = os.path.join(doc_path, "Experiment_Data")
 
     # --- 解析条件 ---
-    target_shape = "Hanen"   # "sankaku" / "kusabi" / "hanen"
+    target_shape = "Ushape"   # "sankaku" / "kusabi" / "ushape"
     target_pitch = "p1.25"
     
     # ★比較したい深さのリスト 

@@ -16,7 +16,7 @@ EXP_BASE_DIR = os.path.join(DOC_PATH, "Experiment_Data")
 SIM_BASE_DIR = os.path.join(DOC_PATH, "Simulation_Data")
 
 # 解析対象
-TARGET_SHAPES = ["Hanen"]
+TARGET_SHAPES = ["Ushape"]
 TARGET_PITCH_NAME = "125"
 TARGET_DEPTH_NAME = "20"
 STEP_LIST = [1, 2, 5, 10]

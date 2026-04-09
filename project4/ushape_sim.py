@@ -85,11 +85,11 @@ def isfree_u_shape(nx, nz, f_width, f_pitch, f_depth, mesh_length, step_size):
     T5_isfree[0:nx, nz]  = 0
 
     # きずの数
-    num_f = int(np.ceil(nz / mn_period))
+    num_f = int(np.ceil(nz / mn_period)) + 1
 
     for i in range(num_f):
         # 中心位置
-        z_start = i * mn_period
+        z_start = i * mn_period + mn_nf
         if z_start >= nz: break
 
         z_end = min(z_start + mn_w, nz)
@@ -132,14 +132,11 @@ def isfree_u_shape(nx, nz, f_width, f_pitch, f_depth, mesh_length, step_size):
                     T13_isfree[xi + 1, zl:zr] = 0
 
     # ===== T5境界補正 =====
-    # T5_isfree[ix, iz] の4隣接T13に空洞が含まれる場合は空洞(0)に設定
-    # T5[ix, iz] の周囲T13: T13[ix, iz-1], T13[ix+1, iz-1],
-    #                        T13[ix, iz  ], T13[ix+1, iz  ]
+    # T5_isfree[ix, iz] は T13[ix, iz] が空洞のときのみ void とする
+    # (ix+1 側の T13 は参照しない)
     void_adj = np.zeros((nx, nz + 1), dtype=bool)
-    void_adj[:, 1:]  |= (T13_isfree[:nx,    :] == 0)  # T13[ix,   iz-1]
-    void_adj[:, 1:]  |= (T13_isfree[1:nx+1, :] == 0)  # T13[ix+1, iz-1]
-    void_adj[:, :nz] |= (T13_isfree[:nx,    :] == 0)  # T13[ix,   iz  ]
-    void_adj[:, :nz] |= (T13_isfree[1:nx+1, :] == 0)  # T13[ix+1, iz  ]
+    void_adj[:, 1:]  |= (T13_isfree[:nx, :] == 0)  # T13[ix, iz-1] が空洞
+    void_adj[:, :nz] |= (T13_isfree[:nx, :] == 0)  # T13[ix, iz  ] が空洞
     T5_isfree[void_adj] = 0
 
     return T13_isfree, T5_isfree
@@ -160,10 +157,14 @@ def around_free(T13_isfree, T5_isfree):
         for j in range(nz + 1):
             if j == 0 or j == nz or i == 0 or i == nx:
                 Uz_free_count[i, j] += 1
-            elif 0 < i < nx and 0 < j < nz:
+
+            if j > 0 and i < nx + 1:
                 if T13_isfree[i, j - 1] == 0: Uz_free_count[i, j] += 1
+            if j < nz and i < nx + 1:
                 if T13_isfree[i, j] == 0:     Uz_free_count[i, j] += 1
+            if i > 0 and j < nz + 1:
                 if T5_isfree[i - 1, j] == 0:  Uz_free_count[i, j] += 1
+            if i < nx and j < nz + 1:
                 if T5_isfree[i, j] == 0:      Uz_free_count[i, j] += 1
 
     # ★後処理：4方向すべてが外枠または空洞のUzノードを非活性に強制
@@ -197,7 +198,7 @@ sz_r = sz + int(probe_d / mesh_length / 2)
 t_max = 4 * x_length / cl / dt
 
 # ---------------- 実行準備 ----------------
-print(f"Shape: U-Shape/Hanen (Straight={f_depth-f_width/2:.2e}, R={f_width/2:.2e})")
+print(f"Shape: U-Shape/Ushape (Straight={f_depth-f_width/2:.2e}, R={f_width/2:.2e})")
 print(f"Pitch = {f_pitch*1000} mm (Left-to-Right Edge)")
 print(f"Depth = {f_depth*1000} mm")
 print(f"Step Size = {step_size}")
@@ -284,8 +285,8 @@ print(f"Done. Time: {end_time - start_time:.2f} s")
 # ---------------- 保存 & 表示 ----------------
 os.makedirs(output_dir, exist_ok=True)
 
-csv_name = f"hanen_cupy_pitch{f_pitch*1e5:g}_depth{f_depth*1e5:g}_step{step_size}.csv"
-# csv_name = f"hanen_cupy_pitch{f_pitch*1e5:g}_depth{f_depth*1e5:g}.csv"
+csv_name = f"ushape_cupy_pitch{f_pitch*1e5:g}_depth{f_depth*1e5:g}_step{step_size}.csv"
+# csv_name = f"ushape_cupy_pitch{f_pitch*1e5:g}_depth{f_depth*1e5:g}.csv"
 
 save_path = os.path.join(output_dir, csv_name)
 

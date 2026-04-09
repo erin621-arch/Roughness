@@ -16,7 +16,7 @@ EXP_BASE_DIR = os.path.join(DOC_PATH, "Experiment_Data")
 SIM_BASE_DIR = os.path.join(DOC_PATH, "Simulation_Data")
 
 # 解析対象の形状リスト
-TARGET_SHAPES = ["Sankaku", "Kusabi", "Hanen"]
+TARGET_SHAPES = ["Sankaku", "Kusabi", "Ushape"]
 
 # 条件設定 (Pitch 1.25, Depth 0.2)
 TARGET_PITCH_NAME = "125"

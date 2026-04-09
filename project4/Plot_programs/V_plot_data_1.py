@@ -107,7 +107,7 @@ def get_sim_filepath(sim_base_dir, shape, p_val, d_str):
     shape_map = {
         "Sankaku": "sankaku", "sankaku": "sankaku",
         "Kusabi": "kusabi", "kusabi": "kusabi",
-        "Hanen": "hanen", "hanen": "hanen" , 
+        "Ushape": "ushape", "ushape": "ushape" , 
         "Kukei": "kukei", "kukei": "kukei"
     }
     s_name = shape_map.get(shape, shape.lower())

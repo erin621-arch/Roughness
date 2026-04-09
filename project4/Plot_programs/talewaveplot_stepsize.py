@@ -66,7 +66,7 @@ def get_exp_folder_path(base_root, shape, pitch, depth):
     shape_map = {
         "sankaku": "Sankaku",
         "kusabi":  "Kusabi",
-        "hanen":   "Hanen"
+        "ushape":   "Ushape"
     }
     dir_shape = shape_map.get(shape, shape.capitalize())
     p_val = pitch.replace("p", "").replace(".", "")
@@ -88,7 +88,7 @@ def get_sim_folder_path(base_root, shape):
     shape_map = {
         "sankaku": "Sankaku",
         "kusabi":  "Kusabi",
-        "hanen":   "Hanen",
+        "ushape":   "Ushape",
         "smooth":  "Smooth"
     }
     dir_shape = shape_map.get(shape, shape.capitalize())
@@ -129,7 +129,7 @@ if __name__ == "__main__":
     sim_base_dir = os.path.join(doc_path, "Simulation_Data")
 
     # 実験条件（dt_exp取得用）
-    target_shape = "hanen"
+    target_shape = "ushape"
     target_pitch = "p1.25"
     target_depth = "d0.20"
     

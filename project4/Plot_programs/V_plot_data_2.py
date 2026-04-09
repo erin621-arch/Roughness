@@ -20,8 +20,8 @@ sankaku_width = 0.25e-3 #(固定)
 sankaku_depth = 0.20e-3 
 
 # 半円(U字)
-hanen_width = 0.25e-3 #(固定)
-hanen_depth = 0.20e-3
+ushape_width = 0.25e-3 #(固定)
+ushape_depth = 0.20e-3
 
 # ★ 保存先ディレクトリ設定
 # SAVE_DIR = r"C:\Users\cs16\Roughness\project4"  # 研究室PC
@@ -158,14 +158,14 @@ def visualize_sankaku():
     print(f"Saved: {save_path}")
     plt.close()
 
-def visualize_hanen():
-    print("Generating Hanen visualization...")
+def visualize_ushape():
+    print("Generating Ushape visualization...")
     fig, axes = plt.subplots(len(step_sizes), 1, figsize=(8, 4 * len(step_sizes)))
-    fig.suptitle(f"U-shape (Width={hanen_width*1000}mm, Depth={hanen_depth*1000}mm)", fontsize=14)
+    fig.suptitle(f"U-shape (Width={ushape_width*1000}mm, Depth={ushape_depth*1000}mm)", fontsize=14)
     
-    mn_w = int(round(hanen_width / mesh_length))
+    mn_w = int(round(ushape_width / mesh_length))
     if mn_w % 2 == 0: mn_w -= 1
-    mn_d = int(round(hanen_depth / mesh_length))
+    mn_d = int(round(ushape_depth / mesh_length))
     
     # --- グリッド生成用の整数計算 ---
     mn_r = mn_w // 2
@@ -223,7 +223,7 @@ def visualize_hanen():
     plt.tight_layout()
     plt.subplots_adjust(top=0.95)
     
-    save_path = os.path.join(SAVE_DIR, "hanen_vertical.png")
+    save_path = os.path.join(SAVE_DIR, "ushape_vertical.png")
     plt.savefig(save_path)
     print(f"Saved: {save_path}")
     plt.close()
@@ -234,6 +234,6 @@ if __name__ == "__main__":
     
     visualize_kusabi()
     visualize_sankaku()
-    visualize_hanen()
+    visualize_ushape()
     
     print("すべての処理が完了しました。")

@@ -46,11 +46,11 @@ def unique_path(path: str) -> str:
             return cand
         k += 1
 
-def make_base_name_hanen(f_pitch_m: float, f_depth_m: float, f_width_m: float, step: int) -> str:
+def make_base_name_ushape(f_pitch_m: float, f_depth_m: float, f_width_m: float, step: int) -> str:
     pitch_code = int(round(f_pitch_m * 1e5))
     depth_code = int(round(f_depth_m * 1e5))
     width_code = int(round(f_width_m * 1e5))
-    return f"hanen_T1T3_pitch{pitch_code}_depth{depth_code}_width{width_code}_step{int(step)}"
+    return f"ushape_T1T3_pitch{pitch_code}_depth{depth_code}_width{width_code}_step{int(step)}"
 
 # ---------------- 基本パラメータ ----------------
 x_length = 0.02   # [m]
@@ -131,11 +131,11 @@ def isfree_u_shape(nx, nz, f_width, f_pitch, f_depth, mesh_length, step_size):
     T5_isfree[0:nx, nz]  = 0
 
     # きずの数
-    num_f = int(np.ceil(nz / mn_period))
+    num_f = int(np.ceil(nz / mn_period)) + 1
 
     for i in range(num_f):
         # 中心位置
-        z_s = i * mn_period
+        z_s = i * mn_period + mn_nf
         if z_s >= nz: break
 
         z_e = min(z_s + mn_w, nz)
@@ -178,14 +178,11 @@ def isfree_u_shape(nx, nz, f_width, f_pitch, f_depth, mesh_length, step_size):
                     T13_isfree[xi + 1, zl:zr] = 0
 
     # ===== T5境界補正 =====
-    # T5_isfree[ix, iz] の4隣接T13に空洞が含まれる場合は空洞(0)に設定
-    # T5[ix, iz] の周囲T13: T13[ix, iz-1], T13[ix+1, iz-1],
-    #                        T13[ix, iz  ], T13[ix+1, iz  ]
+    # T5_isfree[ix, iz] は T13[ix, iz] が空洞のときのみ void とする
+    # (ix+1 側の T13 は参照しない)
     void_adj = np.zeros((nx, nz + 1), dtype=bool)
-    void_adj[:, 1:]  |= (T13_isfree[:nx,    :] == 0)  # T13[ix,   iz-1]
-    void_adj[:, 1:]  |= (T13_isfree[1:nx+1, :] == 0)  # T13[ix+1, iz-1]
-    void_adj[:, :nz] |= (T13_isfree[:nx,    :] == 0)  # T13[ix,   iz  ]
-    void_adj[:, :nz] |= (T13_isfree[1:nx+1, :] == 0)  # T13[ix+1, iz  ]
+    void_adj[:, 1:]  |= (T13_isfree[:nx, :] == 0)  # T13[ix, iz-1] が空洞
+    void_adj[:, :nz] |= (T13_isfree[:nx, :] == 0)  # T13[ix, iz  ] が空洞
     T5_isfree[void_adj] = 0
 
     return T13_isfree, T5_isfree
@@ -207,10 +204,14 @@ def around_free(T13_isfree, T5_isfree):
         for j in range(nz + 1):
             if j == 0 or j == nz or i == 0 or i == nx:
                 Uz_free_count[i, j] += 1
-            elif 0 < i < nx and 0 < j < nz:
+
+            if j > 0 and i < nx + 1:
                 if T13_isfree[i, j - 1] == 0: Uz_free_count[i, j] += 1
+            if j < nz and i < nx + 1:
                 if T13_isfree[i, j] == 0:     Uz_free_count[i, j] += 1
+            if i > 0 and j < nz + 1:
                 if T5_isfree[i - 1, j] == 0:  Uz_free_count[i, j] += 1
+            if i < nx and j < nz + 1:
                 if T5_isfree[i, j] == 0:      Uz_free_count[i, j] += 1
 
     # ★後処理：4方向すべてが外枠または空洞のUzノードを非活性に強制
@@ -288,7 +289,7 @@ class IntegratedViewer:
         self.setup_ui()
 
     def setup_ui(self):
-        self.root.title("Hanen (U-Shape) Simulation Viewer")
+        self.root.title("Ushape (U-Shape) Simulation Viewer")
         self.root.geometry("1000x800")
 
         main_frame = ttk.Frame(self.root)
@@ -536,9 +537,9 @@ class IntegratedViewer:
 #               Main Simulation
 # =======================================================================
 def main():
-    base_name = make_base_name_hanen(f_pitch, f_depth, f_width, step_size)
+    base_name = make_base_name_ushape(f_pitch, f_depth, f_width, step_size)
 
-    print(f"Shape: U-Shape/Hanen (Width={f_width*1000}mm, Depth={f_depth*1000}mm)")
+    print(f"Shape: U-Shape/Ushape (Width={f_width*1000}mm, Depth={f_depth*1000}mm)")
     print(f"Pitch(p) = {f_pitch*1000} mm")
     print(f"Step Size = {step_size} mesh(es)")
     print(f"save_interval = {save_interval}, global_downsample = {global_downsample}")

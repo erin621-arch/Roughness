@@ -67,7 +67,7 @@ def get_exp_folder_path(base_root, shape, pitch, depth):
     shape_map = {
         "sankaku": "Sankaku",
         "kusabi":  "Kusabi",
-        "hanen":   "Hanen"
+        "ushape":   "Ushape"
     }
     dir_shape = shape_map.get(shape, shape.capitalize())
     p_val = pitch.replace("p", "").replace(".", "")
@@ -89,7 +89,7 @@ def get_sim_folder_path(base_root, shape):
     shape_map = {
         "sankaku": "Sankaku",
         "kusabi":  "Kusabi",
-        "hanen":   "Hanen",
+        "ushape":   "Ushape",
         "smooth":  "Smooth"
     }
     dir_shape = shape_map.get(shape, shape.capitalize())
@@ -131,7 +131,7 @@ if __name__ == "__main__":
     sim_base_dir = os.path.join(doc_path, "Simulation_Data")
 
     # 実験条件（dt_exp取得用）
-    target_shape = "hanen"
+    target_shape = "ushape"
     target_pitch = "p1.25"
     target_depth = "d0.20"
     
@@ -193,7 +193,7 @@ if __name__ == "__main__":
             name_no_ext = os.path.splitext(fname)[0]
             
             # ファイル名をアンダースコアで分割し、最後の部分を取得
-            # 例: "hanen_cupy_pitch_depth12.5" -> "depth12.5"
+            # 例: "ushape_cupy_pitch_depth12.5" -> "depth12.5"
             last_part = name_no_ext.split('_')[-1]
 
             # 正規表現で数値部分（整数または小数）を探す

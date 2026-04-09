@@ -29,7 +29,7 @@ class NpzPlayer:
         任意キー: mask_matrix
         表示: 1画面 (Global T1) + 探触子マーク(黄緑)
 
-    [quad モード]  kusabi_ani.py / hanen_ani.py が出力するフォーマット
+    [quad モード]  kusabi_ani.py / ushape_ani.py が出力するフォーマット
         必須キー: g_t1, g_t3, z_t1, z_t3, time_step,
                   extent_global, extent_zoom, roi_rect_mm, base_name
         任意キー: mask_matrix
@@ -161,7 +161,7 @@ class NpzPlayer:
         self._attach_canvas(parent)
 
     # ------------------------------------------------------------------
-    #  Quad ビュー (kusabi_ani / hanen_ani フォーマット)
+    #  Quad ビュー (kusabi_ani / ushape_ani フォーマット)
     # ------------------------------------------------------------------
     def _build_quad_view(self, parent):
         self.root.geometry("1000x800")
