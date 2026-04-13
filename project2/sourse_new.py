@@ -325,6 +325,9 @@ def select_pitch_and_image_exp(pitch, depth_list):
     plt.show()
 
 
+
+
+
 def select_sim(pitch, depth_list):
     sim_data_ref = np.loadtxt(r"C:\Users\manat\project2\data_all\cupy_pitch125_depth0.csv")
     yf_ref, freq_ref = make_fftdata(kiritori2(interpolate_sim_one(sim_data_ref)[8000:], left, right), exp_dt)
@@ -492,6 +495,7 @@ def calculate_column_statistics_with_frequency_band(freq, array1, array2, freq_m
     return stats, masked_array1, masked_array2, freq_band
 
 
+
 def make_fftdata_wavy(data, dt_sample, wave_speed=cl, wavenumber_type='standard'):
     """
     FFTを計算し、周波数または波数で結果を返す関数
@@ -555,6 +559,8 @@ def select_pitch_and_image_wavy(pitch, depth_list):
     plt.legend()
     plt.tight_layout()
     plt.show()
+
+
 
 def select_pitch_and_image_exp_wavy(pitch, depth_list):
     sim_data_ref, gomi = import_data(0, 0)

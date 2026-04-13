@@ -339,6 +339,8 @@ def image_many_all(zenbu, main, tale, freq):
     ax.set_ylim(0, zenbu.max()*1.25)
     plt.legend()
 
+
+
 def image_ref(zenbu,freq):
     fig,ax = plt.subplots(1,1,figsize=(8,6),sharey = True)
     ax.plot(freq,zenbu,label = 'Whole')
@@ -407,6 +409,7 @@ def select_pitch_and_image(pitch, depth_list):
     plt.show()
 
 
+
 def select_pitch_and_image_exp(pitch, depth_list):
     sim_data_ref, gomi = import_data(0, 10, 1)
     yf_ref, freq_ref = make_fftdata(kiritori2(sim_data_ref, left, right), exp_dt)
@@ -465,6 +468,8 @@ def select_exp_data(pitch, depth_list):
         sim_data[i], gomi = import_data(where, 10, rough)
 
     return sim_data
+
+
 
 
 def select_sim(pitch, depth_list):
