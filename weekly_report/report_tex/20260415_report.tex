@@ -1,0 +1,113 @@
+\documentclass{jarticle}
+\usepackage[dvipdfmx]{graphicx}
+\usepackage{amsmath}
+\usepackage{amssymb}
+\usepackage{bm}
+\usepackage{float}
+\usepackage{xcolor}
+
+% 体裁（必要なら調整）
+\topmargin -0.4mm
+\oddsidemargin -0.4mm
+\evensidemargin -0.4mm
+\headheight 0mm
+\headsep 0mm
+\footskip 10mm
+\textheight 247mm
+\textwidth 170mm
+\setlength{\parindent}{1zw}
+\pagestyle{empty}
+
+\makeatletter
+\def \fgcaption{\def \@captype{figure} \caption}
+\def \tbcaption{\def \@captype{table} \caption}
+\makeatother
+
+\def\figurename{Fig.}
+\def\tablename{Table}
+\def\topfraction{.95}
+\def\bottomfraction{.95}
+\def\textfraction{.05}
+\def\floatpagefraction{.8}
+\def\dbltopfraction{.95}
+\def\dbltextfraction{.05}
+\def\dblfloatpagefraction{.8}
+
+\begin{document}
+
+%==============================
+%  ヘッダー
+%==============================
+\begin{center}
+\begin{tabular}{|c|c|c|} \hline
+  \parbox{50mm}{\vspace{1mm} \centering{\Large\bf 2026/04/15}} &
+  \parbox{55mm}{\vspace{1mm} \centering{\Large\bf M1\quad 市川 詠祥}} &
+  \parbox{50mm}{\vspace{1mm} \centering{\Large\bf No.~2}} \ [2mm] \hline
+
+  \multicolumn{3}{|c|}{
+    \parbox{155mm}{
+      \centering\Large\bf \vspace{2mm}
+       くさび形モデルにおける表面波FDTDシミュレーションの実装
+    }
+  } \ [3mm] \hline\hline
+
+  \multicolumn{3}{|c|}{
+    \parbox{155mm}{
+      \large\vspace{2mm}
+
+      {\Large\bf 今月の目標}
+      \begin{itemize}
+        \item くさび形のきずにおける表面波の解析
+      \end{itemize}
+
+      {\Large\bf 進捗の要点}
+      \begin{itemize}
+        \item くさび形FDTDシミュレーションコードの整備（軸定義・形状名の統一）
+        \item くさび形きずにおける表面波シミュレーションプログラムの新規作成
+        \item 縦方向応力（T1）・横方向応力（T3）の時空間マップ可視化プログラムの実装
+      \end{itemize}
+
+      {\Large\bf 今後の実施事項}
+      \begin{itemize}
+        \item くさび形きずにおける表面波の特性解析
+        \item U字形モデルとの比較検討
+      \end{itemize}
+
+      {\Large\bf 投稿・発表予定}
+      \begin{itemize}
+        \item
+      \end{itemize}
+    }
+  } \ [3mm] \hline
+\end{tabular}
+\end{center}
+
+\vspace{6mm}
+{\Large\bf 今回の内容}
+\vspace{3mm}
+
+\subsection*{1. 新入生向け発表（4/13）}
+月曜日に新入生向けの研究紹介発表を行った．
+先週末はその準備に充てていたため，シミュレーション関連の作業は月曜日以降から開始した．
+
+\subsection*{2. コード・リポジトリの整理（4/13）}
+GitHubリポジトリの管理構成を整備した．
+\texttt{project2}（別PC由来のコード群）を\texttt{.gitignore}に追加し，GitHubへの同期対象を\texttt{project4}のみに限定した．
+また，\texttt{README.md}をproject4用に書き直し，\texttt{project2/README.md}を分離して「別PCで作成されたプログラム群である」旨の注意書きを追記した．
+
+\subsection*{3. 表面波FDTDシミュレーションプログラムの作成（4/14）}
+くさび形きずにおける表面波を観測するためのFDTDシミュレーションプログラム\texttt{kusabi\_surface\_sim.py}を新規作成した．
+このプログラムでは，縦方向応力$T_1$および横方向応力$T_3$を複数の観測点で時系列記録し，時空間マップとして保存できる構成とした．
+また，探触子配置と計測点配置を確認するための可視化スクリプト（\texttt{visualize\_measurement\_points.py}等）も合わせて作成した．
+
+\subsection*{4. 時空間マップ可視化プログラムの実装（4/15）}
+論文のFig.~3.5に相当する図を再現するため，可視化プログラム\texttt{plot\_kusabi\_surface\_map.py}を新規作成した．
+このプログラムは，シミュレーション結果（.npzファイル）を読み込み，
+$T_1$（z方向の固定断面における縦方向応力の$x$-time マップ）と
+$T_3$（表面計測点における横方向応力の$z$-time マップ）を
+1枚の図にまとめて出力する．
+あわせて\texttt{kusabi\_surface\_sim.py}のリファクタリングを行い，コードを整理した．
+
+%===========================================
+
+\end{document}
