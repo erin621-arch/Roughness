@@ -186,20 +186,23 @@ for i in range(len(_z_all) - 1):
         _corner_z.append(int(_z_all[i+1]))   # 段が上がり始める z
         _corner_x.append(int(_x_all[i]))     # 前の段（深い側）の x
 
-# 底面点：理想くさびの先端（z=z_rec_end=2125, x=nx=2000）
-_corner_z.append(_z_rec_end)
-_corner_x.append(nx)
-
-_meas_z = np.array(_corner_z, dtype=int)   # 計21点
+_meas_z = np.array(_corner_z, dtype=int)   # 計20点（凸角のみ）
 _meas_x = np.array(_corner_x, dtype=int)
 
 # 記録時間帯
 _t_rec_start = 4000
 _t_rec_len   = 5000
-_T1_surface  = np.zeros((len(_meas_z), _t_rec_len), dtype=float)  # shape=(21, 5000)
-_T3_surface  = np.zeros((len(_meas_z), _t_rec_len), dtype=float)  # shape=(21, 5000)
 
-# GPU用インデックス（整数配列で一括取得）
+# T1: z=2499 における x 方向断面マップ（x = nx-mn_d 〜 nx）
+_z_obs       = 2499                              # 観測 z（ピッチ境界の1メッシュ手前・固体）
+_x_obs_start = nx - mn_d                         # 1980: f_depth ライン
+_x_obs_end   = nx                                # 2000: 底面ライン
+_T1_xslice   = np.zeros((_x_obs_end - _x_obs_start + 1, _t_rec_len), dtype=float)  # shape=(21, 5000)
+
+# T3: 凸角 20点の表面マップ
+_T3_surface  = np.zeros((len(_meas_z), _t_rec_len), dtype=float)  # shape=(20, 5000)
+
+# GPU用インデックス（T3 凸角用）
 _x_surf_cp = cp.array(_meas_x)
 _z_surf_cp = cp.array(_meas_z)
 # --------------------------------------------------------------------
@@ -281,10 +284,10 @@ for t in range(int(t_max)):
     if t > 0:
         wave[t] = cp.mean(T1[1, sz_l:sz_r])
 
-    # ★表面点の T1・T3 を記録（外側の凸角 + 底面点）
+    # ★T1: z=_z_obs の x 断面、T3: 凸角表面点を記録
     if _t_rec_start <= t < _t_rec_start + _t_rec_len:
         ti = t - _t_rec_start
-        _T1_surface[:, ti] = cp.asnumpy(T1[_x_surf_cp, _z_surf_cp])
+        _T1_xslice[:, ti] = cp.asnumpy(T1[_x_obs_start:_x_obs_end + 1, _z_obs])
         _T3_surface[:, ti] = cp.asnumpy(T3[_x_surf_cp, _z_surf_cp])
 
     # 同期
@@ -295,76 +298,27 @@ wave = cp.asnumpy(wave)
 end_time = time.time()
 print(f"Done. Time: {end_time - start_time:.2f} s")
 
-# ---- 表面波時空間マップの保存 ----
-_npy_T1 = os.path.join(
-    output_dir,
-    f"kusabi_T1_surface_pitch{int(f_pitch*1e5)}_depth{int(f_depth*1e5)}.npy"
-)
-_npy_T3 = os.path.join(
-    output_dir,
-    f"kusabi_T3_surface_pitch{int(f_pitch*1e5)}_depth{int(f_depth*1e5)}.npy"
-)
-np.save(_npy_T1, _T1_surface)
-np.save(_npy_T3, _T3_surface)
-print(f"T1 surface map saved: {_npy_T1}")
-print(f"T3 surface map saved: {_npy_T3}")
-
-# ---- 時空間マップの描画（T1・T3 並べて表示）----
-import matplotlib.pyplot as plt
-import matplotlib
-matplotlib.rcParams['font.family'] = 'Noto Sans JP'
-
-_t_axis    = (np.arange(_t_rec_len) + _t_rec_start) * dt * 1e6  # [µs]
-_z_axis_mm = _meas_z * mesh_length * 1e3                          # 計測点の z 座標 [mm]
-
-fig, axes = plt.subplots(2, 1, figsize=(12, 8), sharex=True)
-fig.suptitle(
-    f'くさび表面 時空間マップ\n'
-    f'pitch={f_pitch*1e3:.2f} mm, depth={f_depth*1e3:.2f} mm, '
-    f'外側の凸角 + 底面点 計{len(_meas_z)}点',
-    fontsize=12
-)
-
-for ax, data, label in zip(axes,
-                            [_T1_surface, _T3_surface],
-                            ['T1 (縦方向応力)', 'T3 (横方向応力)']):
-    _vmax = np.percentile(np.abs(data), 98)
-    im = ax.imshow(
-        data,
-        aspect='auto',
-        cmap='bwr',
-        vmin=-_vmax, vmax=_vmax,
-        extent=[_t_axis[0], _t_axis[-1], _z_axis_mm[-1], _z_axis_mm[0]],
-        interpolation='nearest'
-    )
-    ax.set_ylabel('z 方向位置 [mm]')
-    ax.set_title(label)
-    plt.colorbar(im, ax=ax, label=f'{label} [Pa]')
-    ax.axhline(y=_z_axis_mm[-1], color='black', lw=1.0, ls='--',
-               label=f'底面点 z={_z_rec_end}')
-    ax.axhline(y=_z_axis_mm[0],  color='gray',  lw=1.0, ls=':',
-               label=f'垂直壁 z={_z_rec_start} (depth={mn_d})')
-    ax.legend(fontsize=8, loc='upper right')
-
-axes[-1].set_xlabel('Time [µs]')
-
-plt.tight_layout()
-_fig_name = os.path.join(
-    output_dir,
-    f"kusabi_T1T3_surface_map_pitch{int(f_pitch*1e5)}_depth{int(f_depth*1e5)}.png"
-)
-plt.savefig(_fig_name, dpi=150, bbox_inches='tight')
-print(f"Figure saved: {_fig_name}")
-plt.show()
-
-# ---------------- 保存 & 簡易表示 ----------------
+# ---- データ保存（描画は plot_kusabi_surface_map.py で行う）----
 os.makedirs(output_dir, exist_ok=True)
-
-csv_name = f"kusabi2_cupy_pitch{int(f_pitch*1e5)}_depth{int(f_depth*1e5)}.csv"
-
-# ファイル名に step_size を含める
-# csv_name = f"kusabi_cupy_pitch{int(f_pitch*1e5)}_depth{int(f_depth*1e5)}_step{step_size}.csv"
-
-save_path = os.path.join(output_dir, csv_name)
-np.savetxt(save_path, wave, delimiter=',')
-print(f"Saved to: {save_path}")
+_npz_path = os.path.join(
+    output_dir,
+    f"kusabi_surface_map_pitch{int(f_pitch*1e5)}_depth{int(f_depth*1e5)}.npz"
+)
+np.savez(
+    _npz_path,
+    T1_xslice   = _T1_xslice,
+    T3_surface  = _T3_surface,
+    t_rec_start = np.array(_t_rec_start),
+    t_rec_len   = np.array(_t_rec_len),
+    dt          = np.array(dt),
+    mesh_length = np.array(mesh_length),
+    z_obs       = np.array(_z_obs),
+    x_obs_start = np.array(_x_obs_start),
+    x_obs_end   = np.array(_x_obs_end),
+    meas_z      = _meas_z,
+    f_pitch     = np.array(f_pitch),
+    f_depth     = np.array(f_depth),
+    mn_d        = np.array(mn_d),
+    z_rec_start = np.array(_z_rec_start),
+)
+print(f"Data saved: {_npz_path}")
