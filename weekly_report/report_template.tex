@@ -1,0 +1,92 @@
+\documentclass{jarticle}
+\usepackage[dvipdfmx]{graphicx}
+\usepackage{amsmath}
+\usepackage{amssymb}
+\usepackage{bm}
+\usepackage{float}
+\usepackage{xcolor}
+
+% 体裁（必要なら調整）
+\topmargin -0.4mm
+\oddsidemargin -0.4mm
+\evensidemargin -0.4mm
+\headheight 0mm
+\headsep 0mm
+\footskip 10mm
+\textheight 247mm
+\textwidth 170mm
+\setlength{\parindent}{1zw}
+\pagestyle{empty}
+
+\makeatletter
+\def \fgcaption{\def \@captype{figure} \caption}
+\def \tbcaption{\def \@captype{table} \caption}
+\makeatother
+
+\def\figurename{Fig.}
+\def\tablename{Table}
+\def\topfraction{.95}
+\def\bottomfraction{.95}
+\def\textfraction{.05}
+\def\floatpagefraction{.8}
+\def\dbltopfraction{.95}
+\def\dbltextfraction{.05}
+\def\dblfloatpagefraction{.8}
+
+\begin{document}
+
+%==============================
+%  ヘッダー
+%==============================
+\begin{center}
+\begin{tabular}{|c|c|c|} \hline
+  \parbox{50mm}{\vspace{1mm} \centering{\Large\bf 2026/XX/XX}} &
+  \parbox{55mm}{\vspace{1mm} \centering{\Large\bf M1\quad 市川 詠祥}} &
+  \parbox{50mm}{\vspace{1mm} \centering{\Large\bf No.~XX}} \\ [2mm] \hline
+
+  \multicolumn{3}{|c|}{
+    \parbox{155mm}{
+      \centering\Large\bf \vspace{2mm}
+       （タイトル）
+    }
+  } \\ [3mm] \hline\hline
+
+  \multicolumn{3}{|c|}{
+    \parbox{155mm}{
+      \large\vspace{2mm}
+
+      {\Large\bf 今月の目標}
+      \begin{itemize}
+        \item 
+      \end{itemize}
+
+      {\Large\bf 進捗の要点}
+      \begin{itemize}
+        \item 
+      \end{itemize}
+
+      {\Large\bf 今後の実施事項}
+      \begin{itemize}
+        \item 
+      \end{itemize}
+
+      {\Large\bf 投稿・発表予定}
+      \begin{itemize}
+        \item 
+      \end{itemize}
+    }
+  } \\ [3mm] \hline
+\end{tabular}
+\end{center}
+
+\vspace{6mm}
+{\Large\bf 今回の内容}
+\vspace{3mm}
+
+（ここに本文）
+
+%===========================================
+
+\end{document}
+
+
