@@ -12,7 +12,7 @@ output_dir = r"C:/Users/cs16/Roughness/project4/tmp_output"  # 研究室PC
 
 # ★くさび形(IMG_2910) のパラメータ
 f_pitch = 1.25e-3   # ピッチ p [m]
-f_depth = 0.20e-3   # 深さ d [m]
+f_depth = 0.10e-3   # 深さ d [m]
 
 # ★追加パラメータ: 階段の高さ（メッシュ数）
 step_size = 1

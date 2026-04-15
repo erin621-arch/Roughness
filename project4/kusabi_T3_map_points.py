@@ -3,7 +3,10 @@ import matplotlib.pyplot as plt
 import matplotlib.patches as mpatches
 from matplotlib.patches import Polygon
 import matplotlib
-matplotlib.rcParams['font.family'] = 'Noto Sans JP'
+import os 
+import japanize_matplotlib
+
+output_dir = r"C:/Users/cs16/Roughness/project4/tmp_output"
 
 # ====== パラメータ ======
 mesh_length = 1.0e-5
@@ -43,7 +46,7 @@ corner_z = np.array(corner_z)
 corner_x = np.array(corner_x)
 
 # ====== 描画 ======
-fig, ax = plt.subplots(figsize=(9, 6))
+fig, ax = plt.subplots(figsize=(9, 4))
 fig.suptitle("くさび表面のT3 の計測点の位置確認\n"
              f"（pitch={f_pitch*1e3:.2f} mm, depth={f_depth*1e3:.2f} mm ) ",fontsize=11)
 
@@ -120,7 +123,13 @@ for _z in range(z_lo, z_hi + 1):
 for _x in range(nx - x_depth_show, nx + ann_space + 1):
     ax.axhline(y=_x, color='lightgray', linewidth=0.3, zorder=3)
 
-plt.tight_layout()
-plt.savefig("measurement_points_kusabi.png", dpi=150, bbox_inches="tight")
-print("saved: measurement_points_kusabi.png")
+plt.tight_layout(rect=[0, 0, 1, 0.92])
+
+fig_name = os.path.join(
+    output_dir,
+    f"kusabi_T3_map_pitch{int(f_pitch*1e5)}_depth{int(f_depth*1e5)}.png"
+)
+
+plt.savefig(fig_name, dpi=150, bbox_inches="tight")
+print(f"saved: {fig_name}")
 plt.show()

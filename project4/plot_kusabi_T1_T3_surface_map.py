@@ -3,17 +3,19 @@ import matplotlib.pyplot as plt
 import matplotlib
 import matplotlib.ticker
 import os
-
-matplotlib.rcParams['font.family'] = 'Noto Sans JP'
+import japanize_matplotlib
 
 # ====== 読み込むファイルを指定 ======
-output_dir = r"C:/Users/cs16/Roughness/project4/tmp_output"
+input_dir = r"C:/Users/cs16/Roughness/project4/tmp_output"
 f_pitch = 1.25e-3
 f_depth = 0.20e-3
 npz_path = os.path.join(
-    output_dir,
+    input_dir,
     f"kusabi_surface_map_pitch{int(f_pitch*1e5)}_depth{int(f_depth*1e5)}.npz"
 )
+
+# 保存先のディレクトリを指定
+output_dir = r"C:/Users/cs16/Roughness/project4/tmp_output"
 
 # ====== データ読み込み ======
 d = np.load(npz_path)
@@ -60,7 +62,7 @@ im1 = ax.imshow(
     interpolation='nearest'
 )
 ax.set_ylabel('x 方向 [mm]')
-ax.set_title(f'T1 (z = 2124 における縦方向応力)')
+ax.set_title(f'T1 (z = 21.24mm における縦方向応力)')
 plt.colorbar(im1, ax=ax, label='[Pa]')
 x_ticks = np.arange(x_obs_start_mm, x_obs_end_mm + 0.001, 0.05)
 ax.set_yticks(x_ticks)
@@ -82,13 +84,15 @@ ax.set_title(f'T3 (横方向応力)')
 plt.colorbar(im2, ax=ax, label='[Pa]')
 ax.yaxis.set_major_formatter(matplotlib.ticker.FormatStrFormatter('%.2f'))
 
-axes[-1].set_xlabel('Time [µs]')
+axes[-1].set_xlabel(r'Time [$\mu\mathrm{s}$]')
 
 plt.tight_layout()
+
 fig_name = os.path.join(
     output_dir,
-    f"kusabi_T1xslice_T3surface_map_pitch{int(f_pitch*1e5)}_depth{int(f_depth*1e5)}.png"
+    f"kusabi_T1_T3_surface_map_pitch{int(f_pitch*1e5)}_depth{int(f_depth*1e5)}.png"
 )
+
 plt.savefig(fig_name, dpi=150, bbox_inches='tight')
 print(f"Figure saved: {fig_name}")
 plt.show()
