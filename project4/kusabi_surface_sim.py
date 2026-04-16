@@ -28,7 +28,7 @@ nx = int(round(x_length / mesh_length))
 nz = int(round(z_length / mesh_length))
 
 dx = x_length / nx
-dz = z_length / nz
+dz = z_length / nz                          
 
 rho = 7840
 E = 206 * 1e9
