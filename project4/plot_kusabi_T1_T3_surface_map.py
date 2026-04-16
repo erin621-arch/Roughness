@@ -8,7 +8,7 @@ import japanize_matplotlib
 # ====== 読み込むファイルを指定 ======
 input_dir = r"C:/Users/cs16/Roughness/project4/tmp_output"
 f_pitch = 1.25e-3
-f_depth = 0.20e-3
+f_depth = 0.10e-3
 npz_path = os.path.join(
     input_dir,
     f"kusabi_surface_map_pitch{int(f_pitch*1e5)}_depth{int(f_depth*1e5)}.npz"
