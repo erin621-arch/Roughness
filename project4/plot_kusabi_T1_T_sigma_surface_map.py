@@ -9,11 +9,17 @@ import japanize_matplotlib
 input_dir = r"C:/Users/cs16/Roughness/project4/tmp_output"
 f_pitch = 2.00e-3
 f_depth = 0.20e-3
+
 probe_mode = "edge"   # "edge" または "center" を指定
 
-npz_path = os.path.join(
+npz_path_T1 = os.path.join(
     input_dir,
     f"kusabi_surface_map_{probe_mode}_pitch{int(f_pitch*1e5)}_depth{int(f_depth*1e5)}.npz"
+)
+
+npz_path_sigma = os.path.join(
+    input_dir,
+    f"kusabi_surface_sigma_{probe_mode}_pitch{int(f_pitch*1e5)}_depth{int(f_depth*1e5)}.npz"
 )
 
 probe_label = {
@@ -24,30 +30,30 @@ probe_label = {
 # 保存先のディレクトリを指定
 output_dir = r"C:/Users/cs16/Roughness/project4/tmp_output"
 
-# ====== データ読み込み ======
-d = np.load(npz_path)
-T1_xslice   = d['T1_xslice']
-T3_surface  = d['T3_surface']
-t_rec_start = int(d['t_rec_start'])
-t_rec_len   = int(d['t_rec_len'])
-dt          = float(d['dt'])
-mesh_length = float(d['mesh_length'])
-z_obs       = int(d['z_obs'])
-x_obs_start = int(d['x_obs_start'])
-x_obs_end   = int(d['x_obs_end'])
-meas_z      = d['meas_z']
-f_pitch     = float(d['f_pitch'])
-f_depth     = float(d['f_depth'])
-mn_d        = int(d['mn_d'])
-z_rec_start = int(d['z_rec_start'])
+# ====== データ読み込み（T1 用） ======
+d1 = np.load(npz_path_T1)
+T1_xslice   = d1['T1_xslice']
+t_rec_start = int(d1['t_rec_start'])
+t_rec_len   = int(d1['t_rec_len'])
+dt          = float(d1['dt'])
+mesh_length = float(d1['mesh_length'])
+z_obs       = int(d1['z_obs'])
+x_obs_start = int(d1['x_obs_start'])
+x_obs_end   = int(d1['x_obs_end'])
+f_pitch     = float(d1['f_pitch'])
+f_depth     = float(d1['f_depth'])
+
+# ====== データ読み込み（σ 用） ======
+d2 = np.load(npz_path_sigma)
+sigma_slope = d2['sigma_slope']
+slope_z     = d2['slope_z']
 
 # ====== 軸の構築 ======
-t_axis      = (np.arange(t_rec_len) + t_rec_start) * dt * 1e6   # [µs]
-z_axis_mm   = meas_z * mesh_length * 1e3                          # 凸角 z 座標 [mm]
-x_obs_start_mm = x_obs_start * mesh_length * 1e3                  # [mm]
-x_obs_end_mm   = x_obs_end   * mesh_length * 1e3                  # [mm]
-z_obs_mm       = z_obs       * mesh_length * 1e3                  # [mm]
-z_rec_start_mm = z_rec_start * mesh_length * 1e3                  # [mm]
+t_axis         = (np.arange(t_rec_len) + t_rec_start) * dt * 1e6   # [µs]
+x_obs_start_mm = x_obs_start * mesh_length * 1e3
+x_obs_end_mm   = x_obs_end   * mesh_length * 1e3
+z_obs_mm       = z_obs       * mesh_length * 1e3
+slope_z_mm     = slope_z     * mesh_length * 1e3                    # 斜面 z 座標 [mm]
 
 # ====== 描画 ======
 fig, axes = plt.subplots(2, 1, figsize=(12, 8), sharex=True)
@@ -75,19 +81,19 @@ x_ticks = np.arange(x_obs_start_mm, x_obs_end_mm + 0.001, 0.05)
 ax.set_yticks(x_ticks)
 ax.set_yticklabels([f"{v:.2f}" for v in x_ticks])
 
-# ---- T3: 凸角点の表面マップ ----
+# ---- σ = sqrt(T1² + T3²): 斜面上の合力マップ ----
 ax = axes[1]
-_vmax_T3 = np.percentile(np.abs(T3_surface), 98)
+_vmax_sigma = np.percentile(np.abs(sigma_slope), 98)
 im2 = ax.imshow(
-    T3_surface,
+    sigma_slope,
     aspect='auto',
     cmap='bwr',
-    vmin=-_vmax_T3, vmax=_vmax_T3,
-    extent=[t_axis[0], t_axis[-1], z_axis_mm[-1], z_axis_mm[0]],
+    vmin=-_vmax_sigma, vmax=_vmax_sigma,
+    extent=[t_axis[0], t_axis[-1], slope_z_mm[-1], slope_z_mm[0]],
     interpolation='nearest'
 )
 ax.set_ylabel('z 方向 [mm]')
-ax.set_title(f'T3 (横方向応力)')
+ax.set_title(r'$\sigma = \sqrt{T_1^2 + T_3^2}$（斜面上の合力）')
 plt.colorbar(im2, ax=ax, label='[Pa]')
 ax.yaxis.set_major_formatter(matplotlib.ticker.FormatStrFormatter('%.2f'))
 axes[-1].set_xlabel(r'Time [$\mu\mathrm{s}$]')
@@ -96,9 +102,8 @@ plt.tight_layout()
 
 fig_name = os.path.join(
     output_dir,
-    f"kusabi_T1_T3_surface_map_{probe_mode}_pitch{int(f_pitch*1e5)}_depth{int(f_depth*1e5)}.png"
+    f"kusabi_T1_sigma_surface_map_{probe_mode}_pitch{int(f_pitch*1e5)}_depth{int(f_depth*1e5)}.png"
 )
-
 plt.savefig(fig_name, dpi=150, bbox_inches='tight')
 print(f"Figure saved: {fig_name}")
 plt.show()

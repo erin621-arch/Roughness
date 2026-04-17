@@ -1,7 +1,6 @@
 import numpy as np
 import cupy as cp
 import os
-import matplotlib.pyplot as plt
 import time
 
 # ================== 調整パラメータ ==================
@@ -11,8 +10,8 @@ output_dir = r"C:/Users/cs16/Roughness/project4/tmp_output"  # 研究室PC
 # output_dir = r"C:/Users/hisay/OneDrive/ドキュメント/test_folder/tmp_output"   # 自宅PC
 
 # ★くさび形(IMG_2910) のパラメータ
-f_pitch = 1.25e-3   # ピッチ p [m]
-f_depth = 0.10e-3   # 深さ d [m]
+f_pitch = 2.00e-3   # ピッチ p [m]
+f_depth = 0.20e-3   # 深さ d [m]
 
 # ★追加パラメータ: 階段の高さ（メッシュ数）
 step_size = 1
@@ -28,7 +27,7 @@ nx = int(round(x_length / mesh_length))
 nz = int(round(z_length / mesh_length))
 
 dx = x_length / nx
-dz = z_length / nz                          
+dz = z_length / nz
 
 rho = 7840
 E = 206 * 1e9
@@ -50,46 +49,30 @@ n = T / dt
 
 # ---------------- くさび形マスク生成（階段対応版） ----------------
 def isfree_kusabi(nx, nz, f_pitch, f_depth, mesh_length, step_size):
-    # 1:固体 / 0:空洞
     T13_isfree = np.ones((nx + 1, nz))
     T5_isfree  = np.ones((nx, nz + 1))
 
-    # パラメータの離散化
-    mn_p = int(round(f_pitch / mesh_length))  # 1ピッチのセル数
-    mn_d = int(round(f_depth / mesh_length))  # 最大深さのセル数
+    mn_p = int(round(f_pitch / mesh_length))
+    mn_d = int(round(f_depth / mesh_length))
 
-    # 外枠の処理
     T13_isfree[0, 0:nz]  = 0
     T13_isfree[nx, 0:nz] = 0
     T5_isfree[0:nx, 0]   = 0
     T5_isfree[0:nx, nz]  = 0
 
-    # くさびの数
     num_f = int(np.ceil(nz / mn_p))
 
     for i in range(num_f):
-        # 1つのくさびの開始位置と終了位置
         z_start = i * mn_p
         z_end   = min((i + 1) * mn_p, nz)
 
-        # スロープを作るループ (z方向 = 幅方向)
         for z in range(z_start, z_end):
-            # ピッチ内のローカル座標
             local_z = z - z_start
-
-            # 理想的な深さを計算
-            # 深い(mn_d) -> 浅い(0) へ直線的に変化
             ideal_depth = mn_d * (1.0 - (local_z) / mn_p)
-
-            # ★ここで階段状にする
             current_depth = (int(ideal_depth) // step_size) * step_size
 
-            # 底面(nx)から上に向かって削る
             if current_depth > 0:
-                cut_top = nx - current_depth
-                cut_top = max(0, cut_top)
-
-                # 空洞に設定
+                cut_top = max(0, nx - current_depth)
                 T13_isfree[cut_top : nx, z] = 0
                 T5_isfree[cut_top : nx, z] = 0
                 T5_isfree[cut_top : nx, z+1] = 0
@@ -98,9 +81,6 @@ def isfree_kusabi(nx, nz, f_pitch, f_depth, mesh_length, step_size):
 
 # ---------------- 自由境界近傍の設定 (Voxel法) ----------------
 def around_free(T13_isfree, T5_isfree):
-    # =================================
-    # Ux の処理は元のまま変更なし
-    # =================================
     Ux_free_count = np.zeros((nx, nz), dtype=float)
     Uz_free_count = np.zeros((nx + 1, nz + 1), dtype=float)
 
@@ -111,16 +91,11 @@ def around_free(T13_isfree, T5_isfree):
             if T5_isfree[i, j] == 0: Ux_free_count[i, j] += 1
             if T5_isfree[i, j + 1] == 0: Ux_free_count[i, j] += 1
 
-    # =================================
-    # Uz の処理を以下のように修正
-    # =================================
     for i in range(nx + 1):
         for j in range(nz + 1):
-            # 1. 境界の基本カウント (元の外枠条件を維持)
             if j == 0 or j == nz or i == 0 or i == nx:
                 Uz_free_count[i, j] += 1
-            
-            # 2. elif を外し、配列範囲内にある周囲のノードの空洞をカウントする
+
             if j > 0 and i < nx + 1:
                 if T13_isfree[i, j - 1] == 0: Uz_free_count[i, j] += 1
             if j < nz and i < nx + 1:
@@ -130,7 +105,6 @@ def around_free(T13_isfree, T5_isfree):
             if i < nx and j < nz + 1:
                 if T5_isfree[i, j] == 0:      Uz_free_count[i, j] += 1
 
-    # ★後処理：4方向すべてが外枠または空洞のUzノードを非活性に強制
     dir1 = np.ones((nx + 1, nz + 1), dtype=bool)
     dir1[:, 1:] = (T13_isfree == 0)
     dir2 = np.ones((nx + 1, nz + 1), dtype=bool)
@@ -152,7 +126,15 @@ for ms in range(len(wave4)):
     wave4[ms] = wave2 * wave3
 
 # ---------------- 計測設定 ----------------
-sz = int(nz / 2)
+mode = "edge"   # "edge" : ピッチの端に探触子を配置
+                # "center": ピッチの中心に探触子を配置
+
+mn_p = int(round(f_pitch / mesh_length))
+
+if mode == "edge":
+    sz = int(nz / 2)
+else:
+    sz = (int(nz / 2) // mn_p) * mn_p + mn_p // 2
 sx = 0
 probe_d = 0.007
 sz_l = sz - int(probe_d / mesh_length / 2)
@@ -160,17 +142,15 @@ sz_r = sz + int(probe_d / mesh_length / 2)
 
 t_max = 4 * x_length / cl / dt
 
-# ---------------- 表面波時空間マップ用：計測点の定義 ----------------
-# モジュールレベルで mn_p, mn_d を定義（isfree_kusabi 内と同値）
-mn_p = int(round(f_pitch / mesh_length))        # 125
-mn_d = int(round(f_depth / mesh_length))        # 20
+# ---------------- 斜面上の計測点の定義 ----------------
+mn_d = int(round(f_depth / mesh_length))
 
-# 探触子中心が含まれるピッチ（i=16）
-_pitch_i      = sz // mn_p                      # = 16
-_z_rec_start  = _pitch_i * mn_p                 # = 2000
-_z_rec_end    = (_pitch_i + 1) * mn_p           # = 2125
+# 探触子中心が含まれるピッチ
+_pitch_i     = sz // mn_p
+_z_rec_start = _pitch_i * mn_p
+_z_rec_end   = (_pitch_i + 1) * mn_p
 
-# 全表面点の深さプロファイル（計測点選別のため）
+# 外側の凸角のみを計測点とする（kusabi_map_points と同じ定義）
 _z_all   = np.arange(_z_rec_start, _z_rec_end + 1)
 _dep_all = np.array([
     (int(mn_d * (1.0 - (z - (z // mn_p) * mn_p) / mn_p)) // step_size) * step_size
@@ -178,41 +158,35 @@ _dep_all = np.array([
 ], dtype=int)
 _x_all = nx - _dep_all
 
-# 外側の凸角：段が上がる位置 z_{i+1} に、前の段（深い側）の x 座標を対応
 _corner_z = []
 _corner_x = []
 for i in range(len(_z_all) - 1):
     if _dep_all[i+1] < _dep_all[i]:
-        _corner_z.append(int(_z_all[i+1]))   # 段が上がり始める z
-        _corner_x.append(int(_x_all[i]))     # 前の段（深い側）の x
+        _corner_z.append(int(_z_all[i+1]))
+        _corner_x.append(int(_x_all[i]))
 
-_meas_z = np.array(_corner_z, dtype=int)   # 計20点（凸角のみ）
-_meas_x = np.array(_corner_x, dtype=int)
+_slope_z = np.array(_corner_z, dtype=int)   # 凸角のみ
+_slope_x = np.array(_corner_x, dtype=int)
 
 # 記録時間帯
 _t_rec_start = 4000
 _t_rec_len   = 5000
 
-# T1: z=2499 における x 方向断面マップ（x = nx-mn_d 〜 nx）
-_z_obs       = 2499                              # 観測 z（ピッチ境界の1メッシュ手前・固体）
-_x_obs_start = nx - mn_d                         # 1980: f_depth ライン
-_x_obs_end   = nx                                # 2000: 底面ライン
-_T1_xslice   = np.zeros((_x_obs_end - _x_obs_start + 1, _t_rec_len), dtype=float)  # shape=(21, 5000)
+# 記録バッファ（T1・T3 それぞれ斜面点数 × 時間）
+_T1_slope = np.zeros((len(_slope_z), _t_rec_len), dtype=float)
+_T3_slope = np.zeros((len(_slope_z), _t_rec_len), dtype=float)
 
-# T3: 凸角 20点の表面マップ
-_T3_surface  = np.zeros((len(_meas_z), _t_rec_len), dtype=float)  # shape=(20, 5000)
-
-# GPU用インデックス（T3 凸角用）
-_x_surf_cp = cp.array(_meas_x)
-_z_surf_cp = cp.array(_meas_z)
+# GPU用インデックス
+_slope_x_cp = cp.array(_slope_x)
+_slope_z_cp = cp.array(_slope_z)
 # --------------------------------------------------------------------
 
 # ---------------- 実行準備 ----------------
 print(f"Pitch(p) = {f_pitch*1000} mm")
 print(f"Depth(d) = {f_depth*1000} mm")
 print(f"Step Size = {step_size} mesh(es)")
+print(f"Slope measurement points: {len(_slope_z)}")
 
-# 配列確保
 T1 = cp.zeros((nx + 1, nz), dtype=float)
 T3 = cp.zeros((nx + 1, nz), dtype=float)
 T5 = cp.zeros((nx, nz + 1), dtype=float)
@@ -223,13 +197,11 @@ wave = np.zeros(int(t_max))
 dtx = dt / dx
 dtz = dt / dz
 
-# ★くさび形関数を呼び出し
 T13_isfree_np, T5_isfree_np = isfree_kusabi(nx, nz, f_pitch, f_depth, mesh_length, step_size)
 Ux_free_count_np, Uz_free_count_np = around_free(T13_isfree_np, T5_isfree_np)
 
-# ★GPUへ転送
-T13_isfree = cp.asarray(T13_isfree_np)
-T5_isfree = cp.asarray(T5_isfree_np)
+T13_isfree   = cp.asarray(T13_isfree_np)
+T5_isfree    = cp.asarray(T5_isfree_np)
 Ux_free_count = cp.asarray(Ux_free_count_np)
 Uz_free_count = cp.asarray(Uz_free_count_np)
 
@@ -240,34 +212,28 @@ for t in range(int(t_max)):
     if t % 500 == 0:
         print(f"{t}/{int(t_max)} ({t / t_max:.1%})")
 
-    # 境界条件 (反射壁)
     T5[0:nx, 0] = 0; T5[0:nx, nz] = 0
     T3[0, 0:nz] = 0; T3[nx, 0:nz] = 0
     T1[nx, 0:nz] = 0; T1[0, 0] = 0; T3[0, 0] = 0; T5[0, 0] = 0
 
-    # Uz境界
     Uz[1:nx, 0]  -= (4/rho)*dtx * T3[1:nx, 0]
     Uz[1:nx, nz] -= (4/rho)*dtx * (-T3[1:nx, nz-1])
     Uz[nx, 1:nz] -= (4/rho)*dtx * (-T5[nx-1, 1:nz])
 
-    # 応力更新
     T1[1:nx, :] -= dtx * (c11*(Ux[1:nx,:] - Ux[0:nx-1,:]) + c13*(Uz[1:nx,1:] - Uz[1:nx,:-1]))
     T3[1:nx, :] -= dtx * (c13*(Ux[1:nx,:] - Ux[0:nx-1,:]) + c11*(Uz[1:nx,1:] - Uz[1:nx,:-1]))
     T5[:, 1:nz] -= dtx * c55 * (Ux[:,1:] - Ux[:,:-1] + Uz[1:,1:nz] - Uz[:-1,1:nz])
 
-    # ★くさび内部の応力=0
     T1[T13_isfree == 0] = 0.0
     T3[T13_isfree == 0] = 0.0
     T5[T5_isfree[0:nx, :] == 0] = 0.0
 
-    # 音源
     if t < int(len(wave4)):
         T1[0, sz_l:sz_r] = wave4[t]
     else:
         Uz[0, sz_l:sz_r] = 0; Ux[0, sz_l:sz_r] = 0
         T1[0, 0:nz] = 0; T5[0, 0:nz] = 0
 
-    # 速度更新
     Ux[0:nx, 0:nz] = cp.where(
         Ux_free_count < 4,
         Ux - (4/rho/(4 - Ux_free_count)) * dtx * (
@@ -284,41 +250,50 @@ for t in range(int(t_max)):
     if t > 0:
         wave[t] = cp.mean(T1[1, sz_l:sz_r])
 
-    # ★T1: z=_z_obs の x 断面、T3: 凸角表面点を記録
+    # ★斜面上の全計測点で T1・T3 を記録
     if _t_rec_start <= t < _t_rec_start + _t_rec_len:
         ti = t - _t_rec_start
-        _T1_xslice[:, ti] = cp.asnumpy(T1[_x_obs_start:_x_obs_end + 1, _z_obs])
-        _T3_surface[:, ti] = cp.asnumpy(T3[_x_surf_cp, _z_surf_cp])
+        _T1_slope[:, ti] = cp.asnumpy(T1[_slope_x_cp, _slope_z_cp])
+        _T3_slope[:, ti] = cp.asnumpy(T3[_slope_x_cp, _slope_z_cp])
 
-    # 同期
     if t % 1000 == 0:
-         cp.cuda.Device().synchronize()
+        cp.cuda.Device().synchronize()
 
 wave = cp.asnumpy(wave)
 end_time = time.time()
 print(f"Done. Time: {end_time - start_time:.2f} s")
 
-# ---- データ保存（描画は plot_kusabi_surface_map.py で行う）----
+# ---- 符号付き合力を計算 ----
+# 斜面接線方向の垂直応力成分 σ_tt = T1·sin²θ + T3·cos²θ で符号を決める
+# σ_tt > 0: 斜面方向に膨張（引張・正）, σ_tt < 0: 斜面方向に縮小（圧縮・負）
+_L         = np.sqrt(mn_d**2 + mn_p**2)
+_sin2      = (mn_d / _L) ** 2
+_cos2      = (mn_p / _L) ** 2
+_sigma_tt  = _T1_slope * _sin2 + _T3_slope * _cos2
+sigma_slope = np.sign(_sigma_tt) * np.sqrt(_T1_slope**2 + _T3_slope**2)
+
+# ---- データ保存 ----
 os.makedirs(output_dir, exist_ok=True)
 _npz_path = os.path.join(
     output_dir,
-    f"kusabi_surface_map_pitch{int(f_pitch*1e5)}_depth{int(f_depth*1e5)}.npz"
+    f"kusabi_surface_sigma_{mode}_pitch{int(f_pitch*1e5)}_depth{int(f_depth*1e5)}.npz"
 )
 np.savez(
     _npz_path,
-    T1_xslice   = _T1_xslice,
-    T3_surface  = _T3_surface,
+    T1_slope    = _T1_slope,
+    T3_slope    = _T3_slope,
+    sigma_slope = sigma_slope,
+    slope_z     = _slope_z,
+    slope_x     = _slope_x,
     t_rec_start = np.array(_t_rec_start),
     t_rec_len   = np.array(_t_rec_len),
     dt          = np.array(dt),
     mesh_length = np.array(mesh_length),
-    z_obs       = np.array(_z_obs),
-    x_obs_start = np.array(_x_obs_start),
-    x_obs_end   = np.array(_x_obs_end),
-    meas_z      = _meas_z,
     f_pitch     = np.array(f_pitch),
     f_depth     = np.array(f_depth),
+    mn_p        = np.array(mn_p),
     mn_d        = np.array(mn_d),
     z_rec_start = np.array(_z_rec_start),
+    z_rec_end   = np.array(_z_rec_end),
 )
 print(f"Data saved: {_npz_path}")

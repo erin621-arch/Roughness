@@ -13,12 +13,18 @@ mesh_length = 1.0e-5
 nx = 2000
 nz = 4000
 f_pitch = 1.25e-3
-f_depth = 0.10e-3
+f_depth = 0.20e-3
 step_size = 1
-mn_p = int(round(f_pitch / mesh_length))  # 125
-mn_d = int(round(f_depth / mesh_length))  # 20
+mn_p = int(round(f_pitch / mesh_length))  
+mn_d = int(round(f_depth / mesh_length))  
 
-sz = int(nz / 2)  # 2000（探触子中心）
+mode = "center"   # "edge" : ピッチの端に探触子を配置
+                # "center": ピッチの中心に探触子を配置
+
+if mode == "edge":
+    sz = int(nz / 2)
+else:
+    sz = (int(nz / 2) // mn_p) * mn_p + mn_p // 2
 
 # ====== 計測ピッチの設定 ======
 pitch_i     = sz // mn_p        # 16
@@ -127,7 +133,7 @@ plt.tight_layout(rect=[0, 0, 1, 0.92])
 
 fig_name = os.path.join(
     output_dir,
-    f"kusabi_T3_map_pitch{int(f_pitch*1e5)}_depth{int(f_depth*1e5)}.png"
+    f"kusabi_map_points_{mode}_pitch{int(f_pitch*1e5)}_depth{int(f_depth*1e5)}.png"
 )
 
 plt.savefig(fig_name, dpi=150, bbox_inches="tight")
