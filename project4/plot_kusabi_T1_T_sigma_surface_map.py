@@ -93,7 +93,7 @@ im2 = ax.imshow(
     interpolation='nearest'
 )
 ax.set_ylabel('z 方向 [mm]')
-ax.set_title(r'$\sigma = \sqrt{T_1^2 + T_3^2}$（斜面上の合力）')
+ax.set_title(r'$\sigma_{tt} = T_1\sin^2\theta+2T_5\sin\theta\cos\theta+T_3\cos^2\theta$')
 plt.colorbar(im2, ax=ax, label='[Pa]')
 ax.yaxis.set_major_formatter(matplotlib.ticker.FormatStrFormatter('%.2f'))
 axes[-1].set_xlabel(r'Time [$\mu\mathrm{s}$]')

@@ -172,13 +172,15 @@ _slope_x = np.array(_corner_x, dtype=int)
 _t_rec_start = 4000
 _t_rec_len   = 5000
 
-# 記録バッファ（T1・T3 それぞれ斜面点数 × 時間）
+# 記録バッファ（T1・T3・T5 それぞれ斜面点数 × 時間）
 _T1_slope = np.zeros((len(_slope_z), _t_rec_len), dtype=float)
 _T3_slope = np.zeros((len(_slope_z), _t_rec_len), dtype=float)
+_T5_slope = np.zeros((len(_slope_z), _t_rec_len), dtype=float)
 
 # GPU用インデックス
-_slope_x_cp = cp.array(_slope_x)
-_slope_z_cp = cp.array(_slope_z)
+_slope_x_cp    = cp.array(_slope_x)
+_slope_z_cp    = cp.array(_slope_z)
+_slope_x_T5_cp = cp.array(_slope_x - 1)  # T5は角より0.5マス上の固体側ノード
 # --------------------------------------------------------------------
 
 # ---------------- 実行準備 ----------------
@@ -250,11 +252,12 @@ for t in range(int(t_max)):
     if t > 0:
         wave[t] = cp.mean(T1[1, sz_l:sz_r])
 
-    # ★斜面上の全計測点で T1・T3 を記録
+    # ★斜面上の全計測点で T1・T3・T5 を記録
     if _t_rec_start <= t < _t_rec_start + _t_rec_len:
         ti = t - _t_rec_start
-        _T1_slope[:, ti] = cp.asnumpy(T1[_slope_x_cp, _slope_z_cp])
-        _T3_slope[:, ti] = cp.asnumpy(T3[_slope_x_cp, _slope_z_cp])
+        _T1_slope[:, ti] = cp.asnumpy(T1[_slope_x_cp,    _slope_z_cp])
+        _T3_slope[:, ti] = cp.asnumpy(T3[_slope_x_cp,    _slope_z_cp])
+        _T5_slope[:, ti] = cp.asnumpy(T5[_slope_x_T5_cp, _slope_z_cp])
 
     if t % 1000 == 0:
         cp.cuda.Device().synchronize()
@@ -263,14 +266,14 @@ wave = cp.asnumpy(wave)
 end_time = time.time()
 print(f"Done. Time: {end_time - start_time:.2f} s")
 
-# ---- 符号付き合力を計算 ----
-# 斜面接線方向の垂直応力成分 σ_tt = T1·sin²θ + T3·cos²θ で符号を決める
-# σ_tt > 0: 斜面方向に膨張（引張・正）, σ_tt < 0: 斜面方向に縮小（圧縮・負）
-_L         = np.sqrt(mn_d**2 + mn_p**2)
-_sin2      = (mn_d / _L) ** 2
-_cos2      = (mn_p / _L) ** 2
-_sigma_tt  = _T1_slope * _sin2 + _T3_slope * _cos2
-sigma_slope = np.sign(_sigma_tt) * np.sqrt(_T1_slope**2 + _T3_slope**2)
+# ---- σ_tt を計算（斜面接線方向の垂直応力）----
+# σ_tt = T1·sin²θ + 2·T5·sinθ·cosθ + T3·cos²θ
+_L        = np.sqrt(mn_d**2 + mn_p**2)
+_sin_t    = mn_d / _L
+_cos_t    = mn_p / _L
+sigma_slope = (_T1_slope * _sin_t**2
+               + 2 * _T5_slope * _sin_t * _cos_t
+               + _T3_slope * _cos_t**2)
 
 # ---- データ保存 ----
 os.makedirs(output_dir, exist_ok=True)
@@ -282,6 +285,7 @@ np.savez(
     _npz_path,
     T1_slope    = _T1_slope,
     T3_slope    = _T3_slope,
+    T5_slope    = _T5_slope,
     sigma_slope = sigma_slope,
     slope_z     = _slope_z,
     slope_x     = _slope_x,
