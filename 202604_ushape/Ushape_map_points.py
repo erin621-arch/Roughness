@@ -13,10 +13,10 @@ nz = 4000
 
 f_width = 0.25e-3    # 溝幅 w [m]（固定）
 f_depth = 0.20e-3    # 全深さ d [m]
-f_pitch = 1.25e-3    # ピッチ P=W+Gap+W [m]
+f_pitch = 2.00e-3    # ピッチ P=W+Gap+W [m]
 step_size = 1
 
-mode = "edge"   # "edge"  : 溝の端に探触子を配置（ushape_sim.py と同一: sz=nz/2）
+mode = "center"   # "edge"  : 溝の端に探触子を配置（ushape_sim.py と同一: sz=nz/2）
                   # "center": 溝と溝の隙間中心に探触子を配置
 
 mn_w = int(round(f_width / mesh_length))
