@@ -1,0 +1,170 @@
+\documentclass[dvipdfmx,disablejfam]{jarticle}
+\usepackage[dvipdfmx]{graphicx}
+\usepackage{url}
+\usepackage{amsmath}
+\usepackage{amssymb}
+\usepackage{bm}
+\usepackage{float}
+\usepackage{xcolor}
+  
+% 体裁（必要なら調整）
+\topmargin -0.4mm
+\oddsidemargin -0.4mm
+\evensidemargin -0.4mm
+\headheight 0mm
+\headsep 0mm
+\footskip 10mm
+\textheight 247mm
+\textwidth 170mm
+\setlength{\parindent}{1zw}
+\pagestyle{empty}
+
+\makeatletter
+\def \fgcaption{\def \@captype{figure} \caption}
+\def \tbcaption{\def \@captype{table} \caption}
+\makeatother
+
+\def\figurename{Fig.}
+\def\tablename{Table}
+\def\topfraction{.95}
+\def\bottomfraction{.95}
+\def\textfraction{.05}
+\def\floatpagefraction{.8}
+\def\dbltopfraction{.95}
+\def\dbltextfraction{.05}
+\def\dblfloatpagefraction{.8}
+
+\begin{document}
+
+%==============================
+%  ヘッダー
+%==============================
+\begin{center}
+\begin{tabular}{|c|c|c|} \hline
+  \parbox{50mm}{\vspace{1mm} \centering{\Large\bf 2026/04/23}} &
+  \parbox{55mm}{\vspace{1mm} \centering{\Large\bf M1\quad 市川 詠祥}} &
+  \parbox{50mm}{\vspace{1mm} \centering{\Large\bf No.~03}} \\ [2mm] \hline
+
+  \multicolumn{3}{|c|}{
+    \parbox{155mm}{
+      \centering\Large\bf \vspace{2mm}
+       くさび型・円形きずの応力分布
+    }
+  } \\ [3mm] \hline\hline
+
+  \multicolumn{3}{|c|}{
+    \parbox{155mm}{
+      \large\vspace{2mm}
+
+      {\Large\bf 今月の目標}
+      \begin{itemize}
+        \item くさび型きずのT1・T3応力分布の可視化プログラム作成
+        \item 円形きず（U字型）のプログラム作成
+      \end{itemize}
+
+      {\Large\bf 進捗の要点}
+      \begin{itemize}
+        \item くさび型きずのT1・T3応力可視化プログラムを作成し, 探触子位置・ピッチ長を変えた比較を実施した
+        \item ピッチを1.25\,mmから2.00\,mmに拡大すると,モード変換の様子が明確に確認できた
+        \item 探触子位置（端/中心）の変更では応力分布に大きな差は見られなかった
+        \item 円形きずの解析プログラムを新規作成中
+      \end{itemize}
+
+      {\Large\bf 今後の実施事項}
+      \begin{itemize}
+        \item 円形きず解析プログラムの完成
+        \item 斜め方向応力（$T_\sigma$）の評価
+      \end{itemize}
+
+      {\Large\bf 投稿・発表予定}
+      \begin{itemize}
+        \item 特になし
+      \end{itemize}
+    }
+  } \\ [3mm] \hline
+\end{tabular}
+\end{center}
+
+\vspace{6mm}
+{\Large\bf 今回の内容}
+\vspace{3mm}
+
+\subsection*{1. 円形きず解析プログラムの作成}
+
+くさび型のプログラムを参考に, 円形きず（U字型）を対象とした解析プログラムの新規作成をしている途中です.
+作成にあたり, ピッチの定義がくさび型と異なる点が問題となっていて,
+
+くさび型ではピッチ1つが三角形（くさび）1個分に対応するのに対し, 
+U字型のピッチ定義は$P$ =きず＋隙間＋きず であり, 
+1ピッチの中にきず2つ分ある.
+このためくさびのプログラムをそのまま流用できず, 形状を書く部分について新たに作成する必要があります．
+現在この作業を進めています．
+
+\subsection*{2. くさび型きずの応力分布可視化}
+
+先週に引き続き, くさび型きずを対象としたシミュレーション結果の可視化を行った．
+
+探触子の位置とピッチ長$P$を変化させたときの応力分布（T1: $\sigma_{xx}$, T3: $\sigma_{zz}$）を比較した．
+
+\subsubsection*{2.1 探触子位置の比較（$P = 1.25$\,mm, $d = 0.20$\,mm）}
+
+探触子の中心ラインをくさびの頂点（端）に合わせた場合（Fig.\,\ref{fig:edge125}）と, 
+くさびの中心に合わせた場合（Fig.\,\ref{fig:center125}）とを比較した．
+両者の応力分布に大きな差は見られなかった．
+Fig.\,\ref{fig:points125}に, $P=1.25$\,mm の中心に合わせた場合のT3計測点の配置を示す.
+
+\begin{figure}[H]
+  \begin{minipage}[t]{0.49\textwidth}
+    \centering
+    \includegraphics[width=\textwidth]{../../project4/tmp_output/kusabi_T1_T3_surface_map_edge_pitch125_depth20.png}
+    \caption{$P=1.25$\,mm, 探触子を端に配置したときの応力分布}
+    \label{fig:edge125}
+  \end{minipage}
+  \hfill
+  \begin{minipage}[t]{0.49\textwidth}
+    \centering
+    \includegraphics[width=\textwidth]{../../project4/tmp_output/kusabi_T1_T3_surface_map_center_pitch125_depth20.png}
+    \caption{$P=1.25$\,mm, 探触子を中心に配置したときの応力分布}
+    \label{fig:center125}
+  \end{minipage}
+\end{figure}
+
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=0.55\textwidth]{../../project4/tmp_output/kusabi_map_points_center_pitch125_depth20.png}
+  \caption{$P=1.25$\,mm, 探触子を中心に配置したときのT3計測点の位置}
+  \label{fig:points125}
+\end{figure}
+
+\subsubsection*{2.2 ピッチ長の比較（端に配置したとき, $d = 0.20$\,mm）}
+
+ピッチを$P=1.25$\,mmから$P=2.00$\,mmに変更したときの応力分布を比較した
+（Fig.\,\ref{fig:edge125}とFig.\,\ref{fig:edge200}）．
+ピッチを長くすると, 応力が伝搬する時間が長くなり, $P = 1.25mm $ の
+時に比べて, モード変換の様子がわかりやすくなった．
+
+\begin{figure}[H]
+  \begin{minipage}[t]{0.49\textwidth}
+    \centering
+    \includegraphics[width=\textwidth]{../../project4/tmp_output/kusabi_T1_T3_surface_map_edge_pitch125_depth20.png}
+    \caption{$P=1.25$\,mm, 探触子を端に配置したときの応力分布（再掲）}
+  \end{minipage}
+  \hfill
+  \begin{minipage}[t]{0.49\textwidth}
+    \centering
+    \includegraphics[width=\textwidth]{../../project4/tmp_output/kusabi_T1_T3_surface_map_edge_pitch200_depth20.png}
+    \caption{$P=2.00$\,mm, 探触子を端に配置したときの応力分布}
+    \label{fig:edge200}
+  \end{minipage}
+\end{figure}
+
+\subsection*{3. 今後の予定}
+
+\begin{itemize}
+  \item 円形きず解析プログラムの完成
+  \item 斜め方向応力$T_\sigma$の評価
+\end{itemize}
+
+%===========================================
+
+\end{document}

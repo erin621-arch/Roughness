@@ -309,7 +309,9 @@ for t in range(int(t_max)):
 
     if _t_rec_start <= t < _t_rec_start + _t_rec_len:
         ti = t - _t_rec_start
-        _T1_corners_r[:, ti] = cp.asnumpy(T1[_corner_x_r_cp, _corner_z_r_cp])
+        _T1_corners_r[:, ti] = cp.asnumpy(T1[_corner_x_r_cp, _corner_z_r_cp]) #★修正必要かも　
+        # _corner_x_r_cp と _corner_z_r_cp は、それぞれ「右コーナーのX座標のリスト」と「Z座標のリスト」
+        
         _T3_gap[:, ti]       = cp.asnumpy(T3[_gap_x, _gap_z_start:_gap_z_end])
 
     if t % 1000 == 0:
