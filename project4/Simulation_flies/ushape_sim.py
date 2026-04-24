@@ -14,7 +14,7 @@ output_dir = r"C:/Users/cs16/Roughness/project4/tmp_output"  # 研究室PC
 # w = 0.25, R = 0.125, Straight = 0.075
 f_width = 0.25e-3    # 幅 w [m] (固定)
 f_depth = 0.20e-3    # 全深さ d [m]
-f_pitch = 1.25e-3    # ピッチ (左端から次の右端までの距離)
+f_pitch = 1.25e-3    # ピッチ P = W + Gap [m]
 
 # ★階段の高さ（メッシュ数）
 # R部分の滑らかさを調整
@@ -70,10 +70,10 @@ def isfree_u_shape(nx, nz, f_width, f_pitch, f_depth, mesh_length, step_size):
     # --- 2. ピッチとすき間の計算 ---
     mn_p_val = max(1, int(round(f_pitch / mesh_length)))
 
-    # ★定義: ピッチ = 左端〜次右端
-    # 距離 P = 幅W + すきまGap + 幅W
-    # よって、すきまGap = P - 2W
-    mn_nf = max(0, mn_p_val - 2 * mn_w)
+    # ★定義: ピッチ = 溝 + すきま
+    # 距離 P = 幅W + すきまGap
+    # よって、すきまGap = P - W
+    mn_nf = max(0, mn_p_val - mn_w)
 
     # 配置周期 (Start-to-Start) = 幅 + すきま
     mn_period = mn_w + mn_nf
@@ -89,7 +89,7 @@ def isfree_u_shape(nx, nz, f_width, f_pitch, f_depth, mesh_length, step_size):
 
     for i in range(num_f):
         # 中心位置
-        z_start = i * mn_period + mn_nf
+        z_start = i * mn_period
         if z_start >= nz: break
 
         z_end = min(z_start + mn_w, nz)

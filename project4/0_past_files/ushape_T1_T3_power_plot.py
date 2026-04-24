@@ -34,7 +34,7 @@ def isfree_ushape_viz(nx, nz, f_width, f_pitch, f_depth, mesh_length, step_size)
     mn_straight = mn_d - mn_r
 
     mn_p_val = max(1, int(round(f_pitch / mesh_length)))
-    mn_nf = max(0, mn_p_val - 2 * mn_w)
+    mn_nf = max(0, mn_p_val - mn_w)
     mn_period = mn_w + mn_nf
 
     T13_isfree[0, 0:nz]  = 0
@@ -45,7 +45,7 @@ def isfree_ushape_viz(nx, nz, f_width, f_pitch, f_depth, mesh_length, step_size)
     num_f = int(np.ceil(nz / mn_period)) + 1
 
     for i in range(num_f):
-        z_s = i * mn_period + mn_nf  # すきまスタート: 穴をmn_nfだけオフセット
+        z_s = i * mn_period
         if z_s >= nz: break
 
         z_e = min(z_s + mn_w, nz)
@@ -151,7 +151,7 @@ mn_d = int(round(f_depth / mesh_length))
 
 # 見やすいように1ピリオド分＋少しの余白を切り出す (kusabiと統一)
 mn_p_val = max(1, int(round(f_pitch / mesh_length)))
-mn_nf = max(0, mn_p_val - 2 * mn_w)
+mn_nf = max(0, mn_p_val - mn_w)
 mn_period = mn_w + mn_nf
 
 z_start = 0

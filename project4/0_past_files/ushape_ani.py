@@ -19,7 +19,7 @@ output_dir = r"C:/Users/cs16/Roughness/project4/tmp_output"  # 研究室PC
 # ★図面のパラメータ (U字型 / 弾丸型)
 f_width = 0.25e-3    # 幅 w [m]
 f_depth = 0.20e-3    # 全深さ d [m]
-f_pitch = 1.25e-3    # ピッチ (左端から次の右端までの距離) [m]
+f_pitch = 1.25e-3    # ピッチ P = W + Gap [m]
 
 # ★階段の高さ（メッシュ数）
 step_size = 1
@@ -118,10 +118,10 @@ def isfree_u_shape(nx, nz, f_width, f_pitch, f_depth, mesh_length, step_size):
     # --- 2. ピッチとすき間の計算 ---
     mn_p_val = max(1, int(round(f_pitch / mesh_length)))
 
-    # ピッチ = 左端〜次右端
-    mn_nf = max(0, mn_p_val - 2 * mn_w)
+    # ピッチ = 溝 + すきま（P = W + Gap）
+    mn_nf = max(0, mn_p_val - mn_w)
 
-    # 配置周期 (Start-to-Start) = 幅 + すきま
+    # 配置周期 = 幅 + すきま = P
     mn_period = mn_w + mn_nf
 
     # 外枠
@@ -135,7 +135,7 @@ def isfree_u_shape(nx, nz, f_width, f_pitch, f_depth, mesh_length, step_size):
 
     for i in range(num_f):
         # 中心位置
-        z_s = i * mn_period + mn_nf
+        z_s = i * mn_period
         if z_s >= nz: break
 
         z_e = min(z_s + mn_w, nz)

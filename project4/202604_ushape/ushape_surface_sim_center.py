@@ -9,7 +9,7 @@ output_dir = r"C:/Users/cs16/Roughness/project4/tmp_output"
 
 f_width   = 0.25e-3    # 幅 w [m]（固定）
 f_depth   = 0.20e-3    # 全深さ d [m]
-f_pitch   = 2.00e-3    # ピッチ P = W + Gap + W [m]
+f_pitch   = 2.00e-3    # ピッチ P = W + Gap [m]
 step_size = 1
 
 # ===================================================
@@ -54,7 +54,7 @@ def isfree_u_shape(nx, nz, f_width, f_pitch, f_depth, mesh_length, step_size):
     mn_r        = mn_w // 2
     mn_straight = mn_d - mn_r
     mn_p_val    = max(1, int(round(f_pitch / mesh_length)))
-    mn_nf       = max(0, mn_p_val - 2 * mn_w)
+    mn_nf       = max(0, mn_p_val - mn_w)
     mn_period   = mn_w + mn_nf
 
     T13_isfree[0,  0:nz] = 0
@@ -64,7 +64,7 @@ def isfree_u_shape(nx, nz, f_width, f_pitch, f_depth, mesh_length, step_size):
 
     num_f = int(np.ceil(nz / mn_period)) + 1
     for i in range(num_f):
-        z_start  = i * mn_period + mn_nf
+        z_start  = i * mn_period
         if z_start >= nz:
             break
         z_end    = min(z_start + mn_w, nz)
@@ -195,13 +195,13 @@ mn_d        = int(round(f_depth / mesh_length))
 mn_r        = mn_w // 2
 mn_straight = mn_d - mn_r
 mn_p_val    = int(round(f_pitch / mesh_length))
-mn_nf       = max(0, mn_p_val - 2 * mn_w)
+mn_nf       = max(0, mn_p_val - mn_w)
 mn_period   = mn_w + mn_nf
 
 # 溝1・溝2の位置（nz/2 付近の溝を基準）
 _sz_ref         = int(nz / 2)
-i_near          = max(0, (_sz_ref - mn_nf) // mn_period)
-z_groove_start  = i_near * mn_period + mn_nf
+i_near          = max(0, _sz_ref // mn_period)
+z_groove_start  = i_near * mn_period
 z_groove_end    = z_groove_start + mn_w
 z_groove_center = (z_groove_start + z_groove_end) // 2
 z2_start        = z_groove_start + mn_period

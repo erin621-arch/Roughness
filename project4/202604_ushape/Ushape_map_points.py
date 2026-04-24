@@ -13,11 +13,8 @@ nz = 4000
 
 f_width = 0.25e-3    # 溝幅 w [m]（固定）
 f_depth = 0.20e-3    # 全深さ d [m]
-f_pitch = 2.00e-3    # ピッチ P=W+Gap+W [m]
+f_pitch = 2.00e-3    # ピッチ P=W+Gap [m]
 step_size = 1
-
-mode = "center"   # "edge"  : 溝の端に探触子を配置（ushape_sim.py と同一: sz=nz/2）
-                  # "center": 溝と溝の隙間中心に探触子を配置
 
 mn_w = int(round(f_width / mesh_length))
 if mn_w % 2 == 0:
@@ -27,25 +24,22 @@ mn_r  = mn_w // 2
 mn_straight = mn_d - mn_r
 
 mn_p      = int(round(f_pitch / mesh_length))
-mn_nf     = max(0, mn_p - 2 * mn_w)   # Gap = P - 2W
+mn_nf     = max(0, mn_p - mn_w)        # Gap = P - W
 mn_period = mn_w + mn_nf               # 繰り返し周期
 
 # ====== nz/2 付近の溝を特定（ushape_sim.py と同式） ======
-i_near          = max(0, (int(nz / 2) - mn_nf) // mn_period)
-z_groove_start  = i_near * mn_period + mn_nf
+i_near          = max(0, int(nz / 2) // mn_period)
+z_groove_start  = i_near * mn_period
 z_groove_center = (z_groove_start + min(z_groove_start + mn_w, nz)) // 2
 z_groove_end    = z_groove_start + mn_w   # 最初の溝外グリッド
 
 # ====== 溝2（次の溝）の座標 ======
-z2_start  = i_near * mn_period + mn_nf + mn_period
+z2_start  = z_groove_start + mn_period
 z2_center = (z2_start + min(z2_start + mn_w, nz)) // 2
 z2_end    = z2_start + mn_w
 
-# 探触子位置
-if mode == "edge":
-    sz = int(nz / 2)          # 溝の端（ushape_sim.py と同一）
-else:
-    sz = (z_groove_end + z2_start) // 2  # 隙間中心
+# 探触子位置（隙間中心固定）
+sz = (z_groove_end + z2_start) // 2
 
 # ====== 深さ計算（ushape_sim.py の isfree_u_shape と同一ロジック） ======
 def _depth_from_center(dz):
@@ -72,10 +66,10 @@ def _depth_from_center(dz):
     return max_d
 
 def ushape_depth_exact(z):
-    """z グリッドでの最大深さ（複数溝対応）。"""
+    """z グリッドでの最大深さ（溝1・溝2 両方チェック、溝-firstに対応）"""
     best = 0
-    for ig in [i_near, i_near + 1]:           # 溝1・溝2 両方チェック
-        zs = ig * mn_period + mn_nf
+    for ig in [i_near, i_near + 1]:
+        zs = ig * mn_period
         ze = zs + mn_w
         zc = (zs + min(ze, nz)) // 2
         best = max(best, _depth_from_center(abs(int(z) - zc)))
@@ -86,11 +80,11 @@ margin = 15
 z_lo   = z_groove_start - margin
 z_hi   = z2_end          + margin
 
-z_arr    = np.arange(z_lo, z_hi + 1)
+z_arr     = np.arange(z_lo, z_hi + 1)
 depth_arr = np.array([ushape_depth_exact(z) for z in z_arr], dtype=float)
-surf_arr  = nx - depth_arr   # 各 z での表面 x 座標
+surf_arr  = nx - depth_arr
 
-# ====== 凸角（計測点）: 全ステップコーナーを kusabi と同じ方針で収集 ======
+# ====== 凸角（計測点）: 溝1右辺 + 溝2左辺 ======
 def groove_corners(zs, ze, zc, keep_side='both'):
     """溝1つ分の凸角 (z, x) リストを返す。
     keep_side: 'both' / 'right'（隙間側=右辺のみ）/ 'left'（隙間側=左辺のみ）
@@ -154,7 +148,7 @@ ax.axhline(y=nx, color="black", lw=2.0, zorder=5)
 
 # ---- 探触子中心ライン ----
 ax.axvline(x=sz, color="royalblue", lw=1.2, ls="--", alpha=0.9, zorder=6,
-           label=f"探触子中心 ({mode})  z={sz * mesh_length * 1e3:.2f} mm")
+           label=f"探触子中心  z={sz * mesh_length * 1e3:.2f} mm")
 
 # ---- 計測点（溝入口コーナー） ----
 ax.scatter(corner_z, corner_x, s=60, color="red", marker="o", zorder=7,
@@ -187,14 +181,12 @@ ax.text(z_groove_center + 1, nx - mn_straight - mn_r // 2,
         f"R = {mn_r * mesh_length * 1e3:.3f} mm",
         ha="left", va="center", fontsize=9, color="navy")
 
-# ---- アノテーション：ピッチ P=W+Gap+W（表面下） ----
-y_ann  = nx + 12
-y_ann2 = nx + 7
-# ピッチ（左端〜次右端）
+# ---- アノテーション：ピッチ P=W+Gap（溝1左端〜溝2左端） ----
+y_ann = nx + 12
 ax.annotate("",
-            xy=(z2_end, y_ann), xytext=(z_groove_start, y_ann),
+            xy=(z2_start, y_ann), xytext=(z_groove_start, y_ann),
             arrowprops=dict(arrowstyle="<->", color="purple", lw=1.5), zorder=8)
-ax.text((z_groove_start + z2_end) / 2, y_ann + 1.5,
+ax.text((z_groove_start + z2_start) / 2, y_ann + 1.5,
         f"pitch P = {f_pitch * 1e3:.2f} mm ",
         ha="center", va="top", fontsize=11, color="purple")
 
