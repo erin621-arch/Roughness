@@ -1,12 +1,13 @@
 import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib.lines import Line2D
+import japanize_matplotlib
 
 # ================== 1. パラメータ設定 ==================
 # ushape_sim.py のパラメータを継承
 f_width = 0.25e-3    # 幅 w [m]
 f_depth = 0.20e-3    # 深さ d [m]
-f_pitch = 1.25e-3    # ピッチ p [m]
+f_pitch = 2.00e-3    # ピッチ p [m]
 mesh_length = 1.0e-5 # メッシュサイズ [m]
 step_size = 1        # 階段の高さ（メッシュ数）
 
@@ -154,8 +155,15 @@ mn_p_val = max(1, int(round(f_pitch / mesh_length)))
 mn_nf = max(0, mn_p_val - mn_w)
 mn_period = mn_w + mn_nf
 
-z_start = 0
-z_end   = mn_period + 10
+# ushape_surface_sim_center と同一のロジックで溝位置を特定
+_sz_ref         = int(nz / 2)
+_i_near         = max(0, _sz_ref // mn_period)
+z_groove_start  = _i_near * mn_period
+z_groove_end    = z_groove_start + mn_w
+z_groove_center = (z_groove_start + z_groove_end) // 2
+
+z_start = z_groove_start - 5
+z_end   = z_groove_end + 10
 x_start = nx - mn_d - 10
 x_end   = nx + 1
 
@@ -244,6 +252,73 @@ ax.set_xlabel("z index (Width Direction →)")
 ax.set_ylabel("x index (Depth Direction ↓)")
 ax.set_title(f"Staggered Grid Layout - Ushape (Step Size: {step_size} meshes)")
 
+# ================== 5. 計測点・T1 測定位置 ==================
+mn_r        = mn_w // 2
+mn_straight = mn_d - mn_r
+
+def _depth_fc(dz_abs):
+    max_d = 0
+    for d in range(mn_d):
+        d_step = (d // step_size) * step_size
+        if d_step < mn_straight:
+            width_at_d = mn_w
+        else:
+            arc_d = d_step - mn_straight
+            width_at_d = int(np.sqrt(mn_r**2 - arc_d**2) * 2) if arc_d < mn_r else 0
+            if width_at_d > 0 and width_at_d % 2 == 0: width_at_d -= 1
+            if width_at_d < 0: width_at_d = 0
+        if dz_abs <= width_at_d // 2:
+            max_d = d + 1
+    return max_d
+
+def _groove_corners_r(zs, ze, zc):
+    czs, cxs = [], []
+    depths = {z: _depth_fc(abs(z - zc)) for z in range(zs - 1, ze + 2)}
+    for z in range(zs - 1, ze):
+        d_cur, d_next = depths.get(z, 0), depths.get(z + 1, 0)
+        if d_cur == d_next: continue
+        z_pos = z + 1
+        if z_pos <= zc: continue
+        if d_cur == 0:
+            czs += [z_pos, z_pos]; cxs += [nx, nx - d_next]
+        elif d_next == 0:
+            czs += [z_pos, z_pos]; cxs += [nx, nx - d_cur]
+        else:
+            czs.append(z_pos); cxs.append(nx - max(d_cur, d_next))
+    return np.array(czs, dtype=int), np.array(cxs, dtype=int)
+
+# 溝1 のコーナー点（ushape_surface_sim_center と同一の溝位置）
+_zs, _ze = z_groove_start, z_groove_end
+_zc = z_groove_center
+_cz, _cx = _groove_corners_r(_zs, _ze, _zc)
+
+# valid フィルタ (x < nx)
+_valid = (_cx < nx) & (_cx >= 0) & (_cz >= 0) & (_cz < nz)
+_cz, _cx = _cz[_valid], _cx[_valid]
+# Point 9: x=nx-1=1999 を末尾に追加
+_cz = np.append(_cz, _ze)
+_cx = np.append(_cx, nx - 1)
+
+# 概念位置（赤丸●）: Pt 1–8 は自然座標、Pt 9 は境界 x=nx
+pt_z_concept = list(_cz[:-1]) + [_ze]
+pt_x_concept = list(_cx[:-1]) + [nx]
+ax.scatter(pt_z_concept, pt_x_concept, s=80, c='red', marker='o', zorder=12)
+
+# T1 読取位置（赤×）: Pt 1–8 は概念位置と同一、Pt 9 のみ x=nx-1
+pt_z_t1 = list(_cz)          # Pts 1–8 の z + Pt9 の z (=_ze)
+pt_x_t1 = list(_cx)          # Pts 1–8 の x + Pt9 の x (=nx-1)
+ax.scatter(pt_z_t1, pt_x_t1, s=80, c='red', marker='x', linewidths=1.5, zorder=13)
+
+# ラベル
+for i in range(len(_cz) - 1):
+    ax.annotate(f"Pt {i+1}\n({_cx[i]},{_cz[i]})", xy=(_cz[i], _cx[i]),
+                xytext=(_cz[i] + 1.0, _cx[i] - 1.5),
+                fontsize=6.5, color='darkred', zorder=14)
+# Pt 9: 概念位置と T1 読取位置を両方記載
+ax.annotate(f"Pt 9\n概念:({nx},{_ze})\nT1:({nx-1},{_ze})", xy=(_ze, nx),
+            xytext=(_ze + 1.0, nx - 1.5),
+            fontsize=6.5, color='darkred', zorder=14)
+
 # 凡例
 legend_elements = [
     Line2D([0], [0], color='k', lw=2.5, label='Boundary Shape'),
@@ -251,8 +326,12 @@ legend_elements = [
     Line2D([0], [0], marker='s', color='w', markerfacecolor='purple', markersize=8, label='T5 Node (Solid)'),
     Line2D([0], [0], marker='v', color='w', markerfacecolor='orange', markersize=8, label='Ux Node (Active)'),
     Line2D([0], [0], marker='>', color='w', markerfacecolor='green',  markersize=8, label='Uz Node (Active)'),
+    Line2D([0], [0], marker='o', color='w', markerfacecolor='red', markersize=8,
+           label='計測点（概念位置）'),
+    Line2D([0], [0], marker='x', color='red', markersize=8, lw=0,
+           label='T1 読取位置 (Pt 1–8 は概念位置と同一)'),
 ]
-ax.legend(handles=legend_elements, loc='upper right', fontsize=10)
+ax.legend(handles=legend_elements, loc='upper right', fontsize=9)
 
 plt.tight_layout()
 plt.show()

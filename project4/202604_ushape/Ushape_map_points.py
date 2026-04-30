@@ -114,6 +114,11 @@ def groove_corners(zs, ze, zc, keep_side='both'):
 
 cz1, cx1 = groove_corners(z_groove_start, z_groove_end, z_groove_center, keep_side='right')
 cz2, cx2 = groove_corners(z2_start,       z2_end,       z2_center,       keep_side='left')
+
+# groove_corners は (x=2000, x=1992) の順に生成するが、Point 8=x=1992, Point 9=x=2000 に合わせて入れ替え
+cx1[-2], cx1[-1] = cx1[-1], cx1[-2]
+cz1[-2], cz1[-1] = cz1[-1], cz1[-2]
+
 corner_z  = np.array(cz1 + cz2)
 corner_x  = np.array(cx1 + cx2)
 
@@ -153,6 +158,11 @@ ax.axvline(x=sz, color="royalblue", lw=1.2, ls="--", alpha=0.9, zorder=6,
 # ---- 計測点（溝入口コーナー） ----
 ax.scatter(corner_z, corner_x, s=60, color="red", marker="o", zorder=7,
            label="計測点")
+
+# ---- Point 番号アノテーション ----
+for i, (cz, cx) in enumerate(zip(corner_z, corner_x)):
+    ax.text(cz + 1, cx - 1, f"{i+1}", fontsize=8, color="red",
+            ha="left", va="bottom", zorder=9)
 
 # ---- アノテーション：溝幅 ----
 y_w = nx - mn_straight - 1

@@ -224,6 +224,10 @@ corner_z_r = np.array(cz1, dtype=int);  corner_x_r = np.array(cx1, dtype=int)
 
 valid_r    = (corner_x_r < nx) & (corner_x_r >= 0) & (corner_z_r >= 0) & (corner_z_r < nz)
 corner_z_r = corner_z_r[valid_r];  corner_x_r = corner_x_r[valid_r]
+
+# Point 9: x=nx-1=1999 を末尾に追加（境界x=2000の代替）
+corner_x_r = np.append(corner_x_r, nx - 1)
+corner_z_r = np.append(corner_z_r, z_groove_end)
 print(f"T1 計測点数 (右コーナー): {len(corner_z_r)}")
 
 # ---- T3 計測範囲 ----
@@ -309,9 +313,7 @@ for t in range(int(t_max)):
 
     if _t_rec_start <= t < _t_rec_start + _t_rec_len:
         ti = t - _t_rec_start
-        _T1_corners_r[:, ti] = cp.asnumpy(T1[_corner_x_r_cp, _corner_z_r_cp]) #★修正必要かも　
-        # _corner_x_r_cp と _corner_z_r_cp は、それぞれ「右コーナーのX座標のリスト」と「Z座標のリスト」
-        
+        _T1_corners_r[:, ti] = cp.asnumpy(T1[_corner_x_r_cp, _corner_z_r_cp])
         _T3_gap[:, ti]       = cp.asnumpy(T3[_gap_x, _gap_z_start:_gap_z_end])
 
     if t % 1000 == 0:

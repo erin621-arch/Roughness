@@ -46,9 +46,7 @@ fig.suptitle(
 
 # ---- T1: 各コーナー計測点 ----
 ax = axes[0]
-# 変更点：パーセンタイルではなく、全データの絶対値の真の最大値を取得
-_vmax_T1 = np.max(np.abs(T1_corners_r))
-
+_vmax_T1 = np.percentile(np.abs(T1_corners_r), 98)
 im1 = ax.imshow(
     T1_corners_r,
     aspect='auto',
@@ -68,9 +66,7 @@ plt.colorbar(im1, ax=ax, label='[Pa]')
 
 # ---- T3: ギャップ連続記録 ----
 ax = axes[1]
-# 変更点：パーセンタイルではなく、全データの絶対値の真の最大値を取得
-_vmax_T3 = np.max(np.abs(T3_gap))
-
+_vmax_T3 = np.percentile(np.abs(T3_gap), 98)
 im2 = ax.imshow(
     T3_gap,
     aspect='auto',
