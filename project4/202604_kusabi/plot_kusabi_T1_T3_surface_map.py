@@ -7,13 +7,14 @@ import japanize_matplotlib
 
 # ====== 読み込むファイルを指定 ======
 input_dir = r"C:/Users/cs16/Roughness/project4/tmp_output"
-f_pitch = 2.00e-3
-f_depth = 0.20e-3
+f_pitch = 1.25e-3
+f_depth = 0.10e-3
 probe_mode = "edge"   # "edge" または "center" を指定
 
 npz_path = os.path.join(
     input_dir,
-    f"kusabi_surface_map_{probe_mode}_pitch{int(f_pitch*1e5)}_depth{int(f_depth*1e5)}.npz"
+    # f"kusabi_surface_map_{probe_mode}_pitch{int(f_pitch*1e5)}_depth{int(f_depth*1e5)}.npz"
+    f"kusabi_surface_map_center_pitch{int(f_pitch*1e5)}_depth{int(f_depth*1e5)}_max.npz"
 )
 
 probe_label = {

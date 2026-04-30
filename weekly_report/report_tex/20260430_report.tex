@@ -1,0 +1,147 @@
+\documentclass[dvipdfmx,disablejfam]{jarticle}
+\usepackage[dvipdfmx]{graphicx}
+\usepackage{url}
+\usepackage{amsmath}
+\usepackage{amssymb}
+\usepackage{bm}
+\usepackage{float}
+\usepackage{xcolor}
+
+% 体裁（必要なら調整）
+\topmargin -0.4mm
+\oddsidemargin -0.4mm
+\evensidemargin -0.4mm
+\headheight 0mm
+\headsep 0mm
+\footskip 10mm
+\textheight 247mm
+\textwidth 170mm
+\setlength{\parindent}{1zw}
+\pagestyle{empty}
+
+\makeatletter
+\def \fgcaption{\def \@captype{figure} \caption}
+\def \tbcaption{\def \@captype{table} \caption}
+\makeatother
+
+\def\figurename{Fig.}
+\def\tablename{Table}
+\def\topfraction{.95}
+\def\bottomfraction{.95}
+\def\textfraction{.05}
+\def\floatpagefraction{.8}
+\def\dbltopfraction{.95}
+\def\dbltextfraction{.05}
+\def\dblfloatpagefraction{.8}
+
+\begin{document}
+
+%==============================
+%  ヘッダー
+%==============================
+\begin{center}
+\begin{tabular}{|c|c|c|} \hline
+  \parbox{50mm}{\vspace{1mm} \centering{\Large\bf 2026/04/30}} &
+  \parbox{55mm}{\vspace{1mm} \centering{\Large\bf M1\quad 市川 詠祥}} &
+  \parbox{50mm}{\vspace{1mm} \centering{\Large\bf No.~04}} \\ [2mm] \hline
+
+  \multicolumn{3}{|c|}{
+    \parbox{155mm}{
+      \centering\Large\bf \vspace{2mm}
+       円形きずの応力分布プログラム作成について
+    }
+  } \\ [3mm] \hline\hline
+
+  \multicolumn{3}{|c|}{
+    \parbox{155mm}{
+      \large\vspace{2mm}
+
+      {\Large\bf 今月の目標}
+      \begin{itemize}
+        \item 円形きず（U字型）の応力可視化プログラムの作成
+        \item 各計測点でのT1・T3応力分布の確認
+      \end{itemize}
+
+      {\Large\bf 進捗の要点}
+      \begin{itemize}
+        \item 円形きず（U字型）の応力可視化プログラム（202604\_ushape）を作成した
+        \item ピッチ$P=2.00$\,mm・深さ$d=0.20$\,mmの条件でシミュレーションを実施し，T1・T3応力分布を可視化した
+        \item 各コーナー計測点（Pt\,1〜Pt\,9）におけるT1応力の時間遷移を比較した結果，
+              Point\,1とPoint\,9においてT1応力が他の計測点に比べて著しく小さくなった
+        \item 原因について調査中
+      \end{itemize}
+
+      {\Large\bf 今後の実施事項}
+      \begin{itemize}
+        \item Point\,1・Point\,9のT1応力が小さい原因の解明
+        \item 
+      \end{itemize}
+
+      {\Large\bf 投稿・発表予定}
+      \begin{itemize}
+        \item 5/15 , 5/22, 6/12, 6/19 のうち2回, 輪講での発表（PINN関連の内容を予定）
+      \end{itemize}
+    }
+  } \\ [3mm] \hline
+\end{tabular}
+\end{center}
+
+\vspace{6mm}
+{\Large\bf 今回の内容}
+\vspace{3mm}
+
+\subsection*{1. 円形きず解析プログラムの作成}
+
+前回までに作成したくさび型きずのプログラムをベースとして，
+円形きず（U字型）を対象とした解析プログラム群（202604\_ushape）を新規作成した．
+U字型きずの形状は，直線部（深さ$d - R$）と半円（半径$R = w/2$）からなり，
+ピッチはきず + 平らな部分で定義される．
+
+計測点はFig.\,\ref{fig:map_points}に示すように，溝右側の弧上のコーナー点をPt\,1〜Pt\,8，
+底面に一番近いところ（$x = 1999$, 底面境界の1格子上）をPt\,9として設定した．
+
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=0.85\textwidth]{../../project4/tmp_output/ushape_map_points_pitch200_width25_depth20.png}
+  \caption{U字型きずの計測点配置（$P=2.00$\,mm, $w=0.25$\,mm, $d=0.20$\,mm）}
+  \label{fig:map_points}
+\end{figure}
+
+\subsection*{2. T1・T3応力分布の確認}
+
+$P=2.00$\,mm，$d=0.20$\,mmの条件でシミュレーションを実施した結果を
+Fig.\,\ref{fig:surface_map}に示す．
+上段はコーナー計測点Pt\,1〜Pt\,9における時間方向のT1応力，
+下段はすきま部分(z = 20.25mm ～ 22.00mm)のT3応力の分布である．
+
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=0.85\textwidth]{../../project4/tmp_output/ushape_T1_T3_surface_map_center_pitch200_depth20.png}
+  \caption{T1・T3応力の分布（$P=2.00$\,mm, $d=0.20$\,mm）}
+  \label{fig:surface_map}
+\end{figure}
+
+\subsection*{3. Point\,1・Point\,9のT1応力が小さい問題}
+
+各計測点のT1応力の時間波形をFig.\,\ref{fig:waveform}に示す．
+Point\,1と, Point\,9（底面境界のすぐ上）において，他の計測点と比較してT1応力が著しく小さいことが確認された．
+
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=0.85\textwidth]{../../project4/tmp_output/T1_waveform_all_points_pitch200_depth20.png}
+  \caption{各計測点におけるT1応力の時間波形（$P=2.00$\,mm, $d=0.20$\,mm）}
+  \label{fig:waveform}
+\end{figure}
+
+Point\,1とPoint\,9のT1応力が小さい理由について, 原因を調べています. 
+
+\subsection*{4. 今後の予定}
+
+\begin{itemize}
+  \item Point\,1とPoint\,9のT1応力が小さい原因の特定
+  \item 輪講にむけた資料の作成（PINN関連の内容にしようと思います.）
+\end{itemize}
+
+%===========================================
+
+\end{document}
